@@ -19,12 +19,11 @@ Panel {
   readonly property bool showPercentage:Preferences.value(settings,"showPercentage")
   readonly property bool batteryPresent:!!(UPower.displayDevice&&UPower.displayDevice.isPresent&&UPower.displayDevice.type===UPowerDeviceType.Battery)
   readonly property real fraction:batteryPresent?Math.max(0,Math.min(1,UPower.displayDevice.percentage)):0
-  readonly property string barIcon: {
-    if(!batteryPresent)return "battery-medium"
+  readonly property string barBatteryState: {
+    if(!batteryPresent)return "discharging"
     var state=UPower.displayDevice.state
-    if(UPower.onBattery||state===UPowerDeviceState.Discharging)
-      return fraction<0.15?"battery-low":fraction>=0.9?"battery-full":"battery-medium"
-    return state===UPowerDeviceState.Charging&&!(payload.battery&&payload.battery.state==="holding")?"battery-charging":"battery-full"
+    if(UPower.onBattery||state===UPowerDeviceState.Discharging)return "discharging"
+    return state===UPowerDeviceState.Charging&&!(payload.battery&&payload.battery.state==="holding")?"charging":"connected"
   }
   readonly property color foreground:bar?bar.barForeground:Color.foreground
   property var payload:({battery:null,source:null,profiles:[],active:"",defaults:{},errors:[]})
@@ -127,7 +126,7 @@ Panel {
       id:barContent
       anchors.centerIn:parent
       spacing:Style.space(4)
-      PowerIcon { name:root.barIcon;width:Style.bar.iconCanvas;height:width;color:root.foreground;anchors.verticalCenter:parent.verticalCenter }
+      BatteryIcon { percentage:root.fraction*100;state:root.barBatteryState;width:Style.bar.iconCanvas;height:width;color:root.foreground;anchors.verticalCenter:parent.verticalCenter }
       Text { visible:root.showPercentage&&!root.vertical;text:Math.round(root.fraction*100)+"%";textFormat:Text.PlainText;color:root.foreground;font.family:button.fontFamily;font.pixelSize:button.fontSize;anchors.verticalCenter:parent.verticalCenter }
     }
     onPressed:function(b){if(b===Qt.RightButton)root.savePreference("showPercentage",!root.showPercentage);else root.toggle()}

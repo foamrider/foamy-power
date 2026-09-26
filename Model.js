@@ -36,6 +36,13 @@ function parsePayload(raw) {
 function statusLabel(state) {
   return {charging:"Charging",discharging:"On battery",holding:"Charge limit",charged:"Fully charged",connected:"Connected"}[state] || "Battery unavailable"
 }
+function batteryIcon(percentage,state) {
+  var charging = ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"]
+  var levels = ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+  if (["charged","holding","connected"].indexOf(state)>=0) return "󱟢"
+  var index = finite(percentage,0,100) ? Math.min(9,Math.floor(percentage/10)) : 0
+  return state === "charging" ? charging[index] : levels[index]
+}
 function profileLabel(profile) {
   return {"power-saver":"Power saver",balanced:"Balanced",performance:"Performance"}[profile] || "Unavailable"
 }
@@ -45,4 +52,4 @@ function duration(seconds) {
   return minutes >= 60 ? Math.floor(minutes/60) + " h " + minutes%60 + " min" : minutes + " min"
 }
 function measurement(value,unit) { return value === null || value === undefined ? "—" : Number(value.toFixed(1)) + (unit ? " " + unit : "") }
-if (typeof module !== "undefined") module.exports={parsePayload:parsePayload,statusLabel:statusLabel,profileLabel:profileLabel,duration:duration,measurement:measurement}
+if (typeof module !== "undefined") module.exports={batteryIcon:batteryIcon,parsePayload:parsePayload,statusLabel:statusLabel,profileLabel:profileLabel,duration:duration,measurement:measurement}

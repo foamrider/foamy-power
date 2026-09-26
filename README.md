@@ -6,8 +6,8 @@ Battery status and power profiles for Omarchy Quattro.
 
 ## Install
 
-Requires Python 3, UPower, `busctl`, and `powerprofilesctl` from
-power-profiles-daemon. Keep Omarchy’s built-in battery service enabled for
+Requires Python 3, UPower, `busctl`, `powerprofilesctl` from
+power-profiles-daemon, and Symbols Nerd Font (included with Omarchy). Keep Omarchy’s built-in battery service enabled for
 automatic profile switching.
 
 ```sh

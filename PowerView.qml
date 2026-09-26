@@ -46,7 +46,7 @@ Column {
       RowLayout {
         width:parent.width-top.padding*2
         spacing:Style.space(8)
-        PowerIcon { name:"battery-medium";color:root.secondary;Layout.preferredWidth:Style.space(16);Layout.preferredHeight:Style.space(16) }
+        BatteryIcon { percentage:root.present&&root.battery.percentage!==null?root.battery.percentage:0;state:root.batteryState;color:root.secondary;Layout.preferredWidth:Style.space(16);Layout.preferredHeight:Style.space(16) }
         Label { text:root.tr("Power");font.pixelSize:Style.space(14);Layout.fillWidth:true }
         PowerAction { id:settingsButton;iconName:"settings";Layout.preferredWidth:Style.space(30);Layout.preferredHeight:Style.space(30);foreground:root.secondary;tooltipText:root.tr("Settings");onClicked:root.settingsRequested() }
       }
@@ -91,7 +91,12 @@ Column {
           RowLayout {
             width:parent.width
             spacing:Style.space(8)
-            PowerIcon { visible:root.present;name:root.batteryState==="discharging"?"battery-medium":"plug";color:root.secondary;Layout.preferredWidth:Style.space(18);Layout.preferredHeight:Style.space(18) }
+            Item {
+              visible:root.present
+              Layout.preferredWidth:Style.space(18);Layout.preferredHeight:Style.space(18)
+              BatteryIcon { anchors.fill:parent;visible:root.batteryState==="discharging";percentage:root.present&&root.battery.percentage!==null?root.battery.percentage:0;state:root.batteryState;color:root.secondary }
+              PowerIcon { anchors.fill:parent;visible:root.batteryState!=="discharging";name:"plug";color:root.secondary }
+            }
             Label { text:root.statusText;font.pixelSize:Style.space(17);Layout.fillWidth:true;wrapMode:Text.WordWrap }
           }
           Label { visible:root.present;width:parent.width;text:root.timeSummary;color:root.secondary;font.pixelSize:Style.space(13);wrapMode:Text.WordWrap }

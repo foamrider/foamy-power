@@ -17,4 +17,16 @@ assert.equal(Model.measurement(null,'W'),'—')
 assert.equal(Preferences.value({showPercentage:'true'},'showPercentage'),false)
 assert.equal(Preferences.language('system','nb_NO'),'nb')
 assert.equal(Preferences.text('Settings','nb'),'Innstillinger')
+const levels = ['󰁺','󰁻','󰁼','󰁽','󰁾','󰁿','󰂀','󰂁','󰂂','󰁹']
+const charging = ['󰢜','󰂆','󰂇','󰂈','󰢝','󰂉','󰢞','󰂊','󰂋','󰂅']
+for (let i=0;i<10;i++) {
+  for (const percentage of [i*10,i*10+9.99]) {
+    assert.equal(Model.batteryIcon(percentage,'discharging'),levels[i])
+    assert.equal(Model.batteryIcon(percentage,'charging'),charging[i])
+  }
+}
+assert.equal(Model.batteryIcon(100,'charging'),charging[9])
+assert.equal(Model.batteryIcon(100,'discharging'),levels[9])
+for (const state of ['charged','holding','connected']) assert.equal(Model.batteryIcon(80,state),'󱟢')
+assert.equal(Model.batteryIcon(null,'discharging'),levels[0])
 console.log('Model and preference tests passed')

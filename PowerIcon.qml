@@ -8,10 +8,6 @@ Item {
   implicitHeight: 18
   property string name: "settings"
   readonly property var paths: ({
-    "battery-low": '<rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4M6 10v4"/>',
-    "battery-full": '<rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4M6 10v4M10 10v4M14 10v4M18 10v4"/>',
-    "battery-medium": '<rect x="2" y="6" width="18" height="12" rx="2"/><path d="M22 10v4M6 10v4M10 10v4"/>',
-    "battery-charging": '<path d="M6 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3M15 6h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3M22 10v4M11 6l-4 6h6l-4 6"/>',
     "plug": '<path d="M12 22v-5M9 8V2M15 8V2M7 8h10v4a5 5 0 0 1-10 0Z"/>',
     "leaf": '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10ZM2 22c0-6 6-11 11-14"/>',
     "scale": '<path d="m16 16 3-8 3 8c-1.7 1.3-4.3 1.3-6 0ZM2 16l3-8 3 8c-1.7 1.3-4.3 1.3-6 0ZM7 21h10M12 3v18M3 7l3-1c4 1 8 1 12-1l3 1"/>',

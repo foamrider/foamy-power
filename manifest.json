@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "foamy.power",
+  "name": "Foamy Power",
+  "version": "1.0.0",
+  "author": "foamrider",
+  "description": "Battery status and automatic AC/battery power profiles",
+  "license": "MIT",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "Panel.qml"},
+  "barWidget": {
+    "displayName": "Power",
+    "description": "Battery status and power profiles",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {"language": "system", "showPercentage": false},
+    "schema": [
+      {"key": "language", "type": "enum", "label": "Language", "defaultValue": "system", "options": ["system", "en", "nb"]},
+      {"key": "showPercentage", "type": "boolean", "label": "Show bar percentage", "defaultValue": false}
+    ]
+  }
+}

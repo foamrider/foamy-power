@@ -2,11 +2,11 @@
 
 Battery status and power profiles for Omarchy Quattro.
 
-![Foamy Power screenshot](screenshot.png)
+![Foamy Power screenshot](preview.png)
 
 ## Install
 
-Requires Python 3, UPower, `busctl`, `powerprofilesctl` from
+Requires Omarchy Quattro, Python 3, UPower, `busctl`, `powerprofilesctl` from
 power-profiles-daemon, and Symbols Nerd Font (included with Omarchy). Keep Omarchy’s built-in battery service enabled for
 automatic profile switching.
 
@@ -28,6 +28,19 @@ Language and percentage preferences are stored in `shell.json`. Power defaults
 use Omarchy’s existing files in `~/.local/state/omarchy/powerprofiles` (or the
 configured state directory). Plugging in or unplugging applies the matching default.
 Charge limits are shown when available; the plugin does not change them.
+
+## Remove
+
+```sh
+omarchy plugin remove foamy.power
+```
+
+Restore the stock power widget through the bar settings if needed. The selected
+power profile and saved AC/battery defaults remain in place. Omarchy's stock
+battery service continues to apply those defaults when the power source changes.
+
+Omarchy manages the plugin entry in `shell.json`. Packages and data outside
+the plugin directory are retained unless you remove them separately.
 
 ## License
 

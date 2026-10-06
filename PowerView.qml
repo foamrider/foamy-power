@@ -7,6 +7,7 @@ import "Preferences.js" as Preferences
 
 Column {
   id: root
+  property real cornerRadius: Style.cornerRadius * 2
   required property var battery
   required property var profiles
   required property string activeProfile
@@ -38,6 +39,8 @@ Column {
     width:root.width
     height:top.implicitHeight
     color:root.heroColor
+    topLeftRadius:root.cornerRadius
+    topRightRadius:root.cornerRadius
     Column {
       id:top
       width:parent.width
@@ -132,7 +135,7 @@ Column {
             Accessible.role:Accessible.RadioButton
             Accessible.checked:root.activeProfile===modelData
             onClicked:root.profileRequested(modelData)
-            background:Rectangle { radius:Style.space(8);color:root.activeProfile===profileButton.modelData||profileButton.hovered?Qt.alpha(Color.accent,0.12):"transparent";border.width:1;border.color:profileButton.activeFocus||root.activeProfile===profileButton.modelData?Color.accent:Qt.alpha(Color.popups.text,0.18) }
+            background:Rectangle { radius:Style.cornerRadius * 2;color:root.activeProfile===profileButton.modelData||profileButton.hovered?Qt.alpha(Color.accent,0.12):"transparent";border.width:1;border.color:profileButton.activeFocus||root.activeProfile===profileButton.modelData?Color.accent:Qt.alpha(Color.popups.text,0.18) }
             contentItem:Item {
               RowLayout {
                 anchors.centerIn:parent

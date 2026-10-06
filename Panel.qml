@@ -166,6 +166,7 @@ Panel {
       Controls.ScrollBar.vertical:Controls.ScrollBar { policy:Controls.ScrollBar.AsNeeded }
       PowerView {
         id:overview
+        cornerRadius:Math.max(0,panel.cornerRadius-Border.top(panel.borderSpec))
         visible:!root.editingSettings
         width:scroll.width
         battery:root.payload.battery

@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import qs.Commons
 import qs.Ui
@@ -35,24 +34,18 @@ Column {
     width:parent.width-root.padding*2
     spacing:Style.space(8)
     Label { text:root.tr("General");font.pixelSize:Style.space(11);font.letterSpacing:1.2;font.capitalization:Font.AllUppercase;color:root.secondary }
-    Controls.Switch {
+    Column {
       width:parent.width
-      implicitHeight:Style.space(36)
-      text:root.tr("Show bar percentage")
-      activeFocusOnTab:true
-      indicator:Rectangle {
-        x:parent.width-width
-        anchors.verticalCenter:parent.verticalCenter
-        width:Style.space(32);height:Style.space(19);radius:height/2
-        color:parent.checked?Color.accent:Qt.alpha(Color.popups.text,0.16)
-        border.width:parent.activeFocus?1:0
-        border.color:Color.accent
-        Rectangle { x:parent.parent.checked?parent.width-width-Style.space(3):Style.space(3);y:Style.space(3);width:Style.space(13);height:width;radius:width/2;color:parent.parent.checked?Color.popups.background:Color.popups.text }
+      PercentageToggle {
+        id:showPercentageToggle
+        preferenceKey:"showPercentage"
+        label:root.tr("Show bar percentage")
       }
-      contentItem:Label { text:parent.text;verticalAlignment:Text.AlignVCenter;rightPadding:Style.space(45);wrapMode:Text.WordWrap }
-      checked:Preferences.value(root.settings,"showPercentage")
-      enabled:!root.saving
-      onClicked:root.save("showPercentage",checked)
+      PercentageToggle {
+        visible:showPercentageToggle.checked
+        preferenceKey:"showPercentageWhenLow"
+        label:root.tr("Show only when battery is low")
+      }
     }
     PowerDropdown {
       width:parent.width
@@ -63,6 +56,20 @@ Column {
       enabled:!root.saving
       onChanged:function(value){root.save("language",value)}
     }
+  }
+  component PercentageToggle:Toggle {
+    id:percentageToggle
+    required property string preferenceKey
+    width:parent.width
+    implicitHeight:Style.space(36)
+    color:"transparent"
+    borderSpec:activeFocus?Border.flat(Color.accent,1):Border.none()
+    radius:Style.cornerRadius*2
+    fontFamily:"sans-serif"
+    titleSize:Style.space(13)
+    checked:Preferences.value(root.settings,percentageToggle.preferenceKey)
+    enabled:!root.saving
+    onClicked:root.save(percentageToggle.preferenceKey,!percentageToggle.checked)
   }
   Column {
     width:parent.width-root.padding*2

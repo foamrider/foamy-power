@@ -17,6 +17,7 @@ Panel {
   readonly property string helperPath:decodeURIComponent(Qt.resolvedUrl("power_status.py").toString().replace(/^file:\/\//,""))
   readonly property string language:Preferences.language(Preferences.value(settings,"language"),Qt.locale().name)
   readonly property bool showPercentage:Preferences.value(settings,"showPercentage")
+  readonly property bool percentageVisible:Preferences.showBarPercentage(settings,fraction,barBatteryState==="discharging")
   readonly property bool batteryPresent:!!(UPower.displayDevice&&UPower.displayDevice.isPresent&&UPower.displayDevice.type===UPowerDeviceType.Battery)
   readonly property real fraction:batteryPresent?Math.max(0,Math.min(1,UPower.displayDevice.percentage)):0
   readonly property string barBatteryState: {
@@ -125,9 +126,9 @@ Panel {
     Row {
       id:barContent
       anchors.centerIn:parent
-      spacing:Style.space(4)
+      spacing:Style.space(1)
       BatteryIcon { percentage:root.fraction*100;state:root.barBatteryState;width:Style.bar.iconCanvas;height:width;color:root.foreground;anchors.verticalCenter:parent.verticalCenter }
-      Text { visible:root.showPercentage&&!root.vertical;text:Math.round(root.fraction*100)+"%";textFormat:Text.PlainText;color:root.foreground;font.family:button.fontFamily;font.pixelSize:button.fontSize;anchors.verticalCenter:parent.verticalCenter }
+      Text { visible:root.percentageVisible&&!root.vertical;text:Math.round(root.fraction*100)+"%";textFormat:Text.PlainText;color:root.foreground;font.family:button.fontFamily;font.pixelSize:button.fontSize;anchors.verticalCenter:parent.verticalCenter }
     }
     onPressed:function(b){if(b===Qt.RightButton)root.savePreference("showPercentage",!root.showPercentage);else root.toggle()}
   }

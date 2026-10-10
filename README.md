@@ -22,6 +22,7 @@ battery is present.
 - Left-click to see battery readings and choose a power profile.
 - Profile selections last until the power source changes.
 - Open the cog to set separate AC and battery defaults, language, and bar percentage.
+- Enable **Show bar percentage** to reveal **Show only when battery is low**. The second option limits the percentage to 10% or below while discharging.
 - Right-click to toggle the percentage on horizontal bars.
 
 Language and percentage preferences are stored in `shell.json`. Power defaults

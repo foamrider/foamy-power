@@ -3,7 +3,6 @@ import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import qs.Commons
 import "Model.js" as Model
-import "Preferences.js" as Preferences
 
 Column {
   id: root
@@ -19,7 +18,7 @@ Column {
   signal settingsRequested()
   signal profileRequested(string profile)
   signal retryRequested()
-  function tr(label) { return Preferences.text(label,language) }
+  function tr(label) { return FoamyI18n.t(label) }
   readonly property bool present: !!(battery && battery.present)
   readonly property string batteryState: present ? battery.state : ""
   readonly property string timeText: present ? Model.duration(battery.seconds) : "—"

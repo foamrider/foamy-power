@@ -1,3 +1,4 @@
+const I18n = require('./i18n.cjs');
 const assert = require('node:assert/strict')
 const Model = require('../Model.js')
 const Preferences = require('../Preferences.js')
@@ -35,12 +36,11 @@ for (const fraction of [null,undefined,NaN,Infinity,-0.1,1.1,'0.1']) {
 }
 assert.equal(Preferences.showBarPercentage({showPercentageWhenLow:'true'},0.05,true),false)
 assert.equal(Preferences.showBarPercentage({showPercentage:true,showPercentageWhenLow:'true'},0.5,true),true)
-assert.equal(Preferences.text('Show only when battery is low','nb'),'Vis bare ved lavt batterinivå')
+assert.equal(I18n.text('Show only when battery is low','nb'),'Vis bare ved lavt batterinivå')
 const manifest = require('../manifest.json')
 assert.deepEqual(manifest.barWidget.defaults,Preferences.defaults)
 for (const field of manifest.barWidget.schema) assert.equal(field.defaultValue,Preferences.defaults[field.key])
-assert.equal(Preferences.language('system','nb_NO'),'nb')
-assert.equal(Preferences.text('Settings','nb'),'Innstillinger')
+assert.equal(I18n.text('Settings','nb'),'Innstillinger')
 const levels = ['󰁺','󰁻','󰁼','󰁽','󰁾','󰁿','󰂀','󰂁','󰂂','󰁹']
 const charging = ['󰢜','󰂆','󰂇','󰂈','󰢝','󰂉','󰢞','󰂊','󰂋','󰂅']
 for (let i=0;i<10;i++) {

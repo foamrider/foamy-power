@@ -21,11 +21,11 @@ battery is present.
 
 - Left-click to see battery readings and choose a power profile.
 - Profile selections last until the power source changes.
-- Open the cog to set separate AC and battery defaults, language, and bar percentage.
+- Open the cog to set separate AC and battery defaults and bar percentage.
 - Enable **Show bar percentage** to reveal **Show only when battery is low**. The second option limits the percentage to 10% or below while discharging.
 - Right-click to toggle the percentage on horizontal bars.
 
-Language and percentage preferences are stored in `shell.json`. Power defaults
+Percentage preferences are stored in `shell.json`. Power defaults
 use Omarchy’s existing files in `~/.local/state/omarchy/powerprofiles` (or the
 configured state directory). Plugging in or unplugging applies the matching default.
 Charge limits are shown when available; the plugin does not change them.
@@ -49,3 +49,7 @@ Licensed under [MIT](LICENSE). Omarchy and Lucide notices are in
 [LICENSE-OMARCHY](LICENSE-OMARCHY) and [LICENSE-LUCIDE](LICENSE-LUCIDE).
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
+
+Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+
+Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.

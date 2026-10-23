@@ -18,7 +18,7 @@ Column {
   signal save(string key,var value)
   signal saveDefault(string source,string profile)
   signal retry()
-  function tr(label){return Preferences.text(label,language)}
+  function tr(label){return FoamyI18n.t(label)}
   function focusBack(){backButton.forceActiveFocus()}
   readonly property color secondary:Qt.tint(Color.popups.background,Qt.alpha(Color.popups.text,0.7))
   readonly property var profileOptions:profiles.map(function(p){return {value:p,label:root.tr(Model.profileLabel(p))}})
@@ -47,15 +47,7 @@ Column {
         label:root.tr("Show only when battery is low")
       }
     }
-    PowerDropdown {
-      width:parent.width
-      label:root.tr("Language")
-      fontFamily:"sans-serif"
-      value:Preferences.value(root.settings,"language")
-      options:[{value:"system",label:root.tr("System")},{value:"en",label:"English"},{value:"nb",label:"Norsk bokmål"}]
-      enabled:!root.saving
-      onChanged:function(value){root.save("language",value)}
-    }
+
   }
   component PercentageToggle:Toggle {
     id:percentageToggle

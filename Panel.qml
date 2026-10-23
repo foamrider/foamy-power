@@ -15,7 +15,7 @@ Panel {
   manageIpc:false
   readonly property bool vertical:bar&&(bar.position==="left"||bar.position==="right")
   readonly property string helperPath:decodeURIComponent(Qt.resolvedUrl("power_status.py").toString().replace(/^file:\/\//,""))
-  readonly property string language:Preferences.language(Preferences.value(settings,"language"),Qt.locale().name)
+  readonly property string language:FoamyI18n.language
   readonly property bool showPercentage:Preferences.value(settings,"showPercentage")
   readonly property bool percentageVisible:Preferences.showBarPercentage(settings,fraction,barBatteryState==="discharging")
   readonly property bool batteryPresent:!!(UPower.displayDevice&&UPower.displayDevice.isPresent&&UPower.displayDevice.type===UPowerDeviceType.Battery)
@@ -35,7 +35,7 @@ Panel {
   property bool refreshPending:false
   property var pendingPreferences:({})
   readonly property string errors:([queryError,actionError].concat(payload.errors.map(function(e){return root.tr(e.message)})).filter(function(e){return e!==""}).join("\n"))
-  function tr(label){return Preferences.text(label,language)}
+  function tr(label){return FoamyI18n.t(label)}
   function refresh(){
     // Coalesce source transitions and post-action reads; never overlap snapshots or publish an old one after a write.
     if(statusProcess.running||actionProcess.running){refreshPending=true;return}

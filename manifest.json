@@ -6,19 +6,35 @@
   "author": "foamrider",
   "description": "Battery status and automatic AC/battery power profiles",
   "license": "MIT",
-  "kinds": ["bar-widget"],
-  "entryPoints": {"barWidget": "Panel.qml"},
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
   "barWidget": {
     "displayName": "Power",
     "description": "Battery status and power profiles",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",
-    "defaults": {"language": "system", "showPercentage": false, "showPercentageWhenLow": false},
+    "defaults": {
+      "showPercentage": false,
+      "showPercentageWhenLow": false
+    },
     "schema": [
-      {"key": "language", "type": "enum", "label": "Language", "defaultValue": "system", "options": ["system", "en", "nb"]},
-      {"key": "showPercentage", "type": "boolean", "label": "Show bar percentage", "defaultValue": false},
-      {"key": "showPercentageWhenLow", "type": "boolean", "label": "Show only when battery is low", "defaultValue": false}
+      {
+        "key": "showPercentage",
+        "type": "boolean",
+        "label": "Show bar percentage",
+        "defaultValue": false
+      },
+      {
+        "key": "showPercentageWhenLow",
+        "type": "boolean",
+        "label": "Show only when battery is low",
+        "defaultValue": false
+      }
     ]
   }
 }

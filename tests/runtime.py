@@ -111,12 +111,11 @@ ShellRoot {
         var lines = logView.text().trim().split("\n")
         if (!check(lines.length === 2, "two CLI saves, got " + JSON.stringify(lines))) return
         if (!check(lines[0] === "bar set foamy.power showPercentage true --json" && lines[1] === "bar set foamy.power showPercentageWhenLow true --json", "CLI order: " + JSON.stringify(lines))) return
-        if (!check(!two.saving && two.settingsError === "", "queue drained without error")) return
+        if (!check(!two.saving && two.prefs.error === "", "queue drained without error")) return
         // Default-profile dropdown: selecting must not cut its binding to the saved default.
         var dd = shell.find(popup.bodyItem, "acDefault")
         if (!check(dd && dd.value === "power-saver", "AC dropdown shows the saved default: " + (dd ? dd.value : "missing"))) return
-        dd.value = "balanced"          // what FoamyDropdown.selectCurrent() does
-        dd.changed("balanced")
+        dd.changed("balanced")         // a pick: the kit emits, the saved default stays the source
         if (!check(dd.value === "power-saver", "dropdown rebound to the saved default after select, got " + dd.value)) return
         break
       case 7:

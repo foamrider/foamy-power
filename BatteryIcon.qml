@@ -1,6 +1,8 @@
 import QtQuick
+import "kit"
 import "Model.js" as Model
 
+// Battery level glyph (Nerd Font symbols, which the Omarchy font carries).
 Item {
   id: root
   property real percentage: 0
@@ -10,10 +12,10 @@ Item {
   implicitHeight: 18
   Text {
     anchors.fill: parent
-    text: Model.batteryIcon(root.percentage,root.state)
+    text: Model.batteryIcon(root.percentage, root.state)
     textFormat: Text.PlainText
     color: root.color
-    font.family: "Symbols Nerd Font"
+    font.family: FoamyStyle.monoFamily
     font.pixelSize: root.height
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter

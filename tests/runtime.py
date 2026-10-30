@@ -2,7 +2,9 @@
 on a chosen Omarchy host and check: one leader owns IPC, PowerService reads
 power profiles once (stub `busctl`) and the AC/battery defaults in process,
 the popup body builds lazily, the width does not change when Settings opens,
-and quick successive saves are queued on both the inline and CLI paths.
+quick successive saves are queued on both the inline and CLI paths, the
+default-profile dropdowns keep following the saved defaults after a selection,
+and re-read sysfs facts are published once their reload completes.
 
   python3 tests/runtime.py [4.0|4.5]      (default: both)
 
@@ -110,6 +112,27 @@ ShellRoot {
         if (!check(lines.length === 2, "two CLI saves, got " + JSON.stringify(lines))) return
         if (!check(lines[0] === "bar set foamy.power showPercentage true --json" && lines[1] === "bar set foamy.power showPercentageWhenLow true --json", "CLI order: " + JSON.stringify(lines))) return
         if (!check(!two.saving && two.settingsError === "", "queue drained without error")) return
+        // Default-profile dropdown: selecting must not cut its binding to the saved default.
+        var dd = shell.find(popup.bodyItem, "acDefault")
+        if (!check(dd && dd.value === "power-saver", "AC dropdown shows the saved default: " + (dd ? dd.value : "missing"))) return
+        dd.value = "balanced"          // what FoamyDropdown.selectCurrent() does
+        dd.changed("balanced")
+        if (!check(dd.value === "power-saver", "dropdown rebound to the saved default after select, got " + dd.value)) return
+        break
+      case 7:
+        if (!check(facts.threshold === 80 && facts.cycles === 186, "sysfs facts loaded: " + facts.threshold + "/" + facts.cycles)) return
+        thresholdWriter.setText("60\n")
+        cyclesWriter.setText("190\n")
+        acWriter.setText("performance\n")   // a default changed elsewhere
+        break
+      case 8:
+        shell.factUpdates = 0
+        facts.reload()
+        break
+      case 9:
+        if (!check(facts.threshold === 60 && facts.cycles === 190 && shell.factUpdates >= 2, "reloaded sysfs facts published after load: " + facts.threshold + "/" + facts.cycles + " updates " + shell.factUpdates)) return
+        var dd2 = shell.find(popup.bodyItem, "acDefault")
+        if (!check(dd2.value === "performance", "dropdown follows a default changed elsewhere, got " + dd2.value)) return
         one.closeSettings(); one.close()
         console.log("FOAMY DONE")
         Qt.quit()
@@ -117,7 +140,19 @@ ShellRoot {
     }
   }
   property real width0: 0
+  property int factUpdates: 0
+  function find(item, name) {
+    if (!item) return null
+    if (item.objectName === name) return item
+    var kids = item.children || []
+    for (var i = 0; i < kids.length; i++) { var hit = find(kids[i], name); if (hit) return hit }
+    return null
+  }
   FileView { id: logView; blockLoading: true; printErrors: false }
+  Plugin.BatteryFacts { id: facts; base: Quickshell.env("FOAMY_SYSFS"); supply: "BAT0"; onUpdated: shell.factUpdates++ }
+  FileView { id: thresholdWriter; path: Quickshell.env("FOAMY_SYSFS") + "/BAT0/charge_control_end_threshold"; printErrors: false }
+  FileView { id: cyclesWriter; path: Quickshell.env("FOAMY_SYSFS") + "/BAT0/cycle_count"; printErrors: false }
+  FileView { id: acWriter; path: Quickshell.env("HOME") + "/.local/state/omarchy/powerprofiles/ac"; printErrors: false }
 }
 '''
 
@@ -138,6 +173,11 @@ def run(host):
     profiles = r.base / "home/.local/state/omarchy/powerprofiles"
     profiles.mkdir(parents=True)
     (profiles / "ac").write_text("power-saver\n")
+    sysfs = r.base / "sysfs/BAT0"
+    sysfs.mkdir(parents=True)
+    (sysfs / "charge_control_end_threshold").write_text("80\n")
+    (sysfs / "cycle_count").write_text("186\n")
+    r.env["FOAMY_SYSFS"] = str(sysfs.parent)
     r.env["PATH"] = f"{stub}:{r.env['PATH']}"
     r.env["FOAMY_CLI_LOG"] = str(log)
     r.run(timeout=30)

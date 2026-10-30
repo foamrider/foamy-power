@@ -16,6 +16,13 @@ FoamySettingsPage {
   signal save(string key, var value)
   signal saveDefault(string source, string profile)
 
+  // FoamyDropdown (kit 0.1.0) assigns `value` on select, which would cut the
+  // binding to the saved default; restore it so the dropdown keeps showing
+  // what is persisted (a failed save, or a change made elsewhere, shows up).
+  function rebind(dropdown, source) {
+    dropdown.value = Qt.binding(function() { return root.defaults[source] || "" })
+  }
+
   readonly property var profileOptions: profiles.map(function(p) { return { value: p, label: FoamyI18n.t(Model.profileLabel(p)) } })
 
   FoamySettingsSection {
@@ -45,20 +52,24 @@ FoamySettingsPage {
     title: FoamyI18n.t("Default power profiles")
     description: FoamyI18n.t("A profile selected from the main view lasts until the power source changes.")
     FoamyDropdown {
+      id: acDropdown
+      objectName: "acDefault"
       width: parent.width
       label: FoamyI18n.t("Plugged in (AC)")
       value: root.defaults.ac || ""
       options: root.profileOptions
       enabled: !root.saving && root.profiles.length > 0
-      onChanged: function(value) { root.saveDefault("ac", value) }
+      onChanged: function(value) { root.rebind(acDropdown, "ac"); root.saveDefault("ac", value) }
     }
     FoamyDropdown {
+      id: batteryDropdown
+      objectName: "batteryDefault"
       width: parent.width
       label: FoamyI18n.t("On battery (DC)")
       value: root.defaults.battery || ""
       options: root.profileOptions
       enabled: !root.saving && root.profiles.length > 0
-      onChanged: function(value) { root.saveDefault("battery", value) }
+      onChanged: function(value) { root.rebind(batteryDropdown, "battery"); root.saveDefault("battery", value) }
     }
   }
 }

@@ -126,7 +126,7 @@ PanelKeyCatcher {
       width: list.width
       bottomPadding: FoamyStyle.padding
 
-      FoamyHeader {
+      FoamyHeroBand {
         width: parent.width
         iconName: Model.headerIcon(root.battery)
         title: root.t("Power")
@@ -134,58 +134,60 @@ PanelKeyCatcher {
         settingsHasCursor: cursor.at(root.settingsStop)
         onSettingsClicked: root.settingsRequested()
         onSettingsHovered: function(hovered) { if (hovered) cursor.hover(root.settingsStop) }
+
+          // Hero: charge ring and the current readings (the dev band, compact).
+          RowLayout {
+            visible: root.present
+            Layout.fillWidth: true
+            spacing: Style.space(24)
+            Item {
+              Layout.preferredWidth: Style.space(96)
+              Layout.preferredHeight: width
+              Canvas {
+                id: ring
+                anchors.fill: parent
+                property real fraction: root.present && root.battery.percentage !== null ? root.battery.percentage / 100 : 0
+                property color accent: FoamyPalette.accent
+                property color track: FoamyPalette.divider
+                onFractionChanged: requestPaint()
+                onAccentChanged: requestPaint()
+                onTrackChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                onPaint: {
+                  var ctx = getContext("2d"), line = Style.space(6), radius = (Math.min(width, height) - line) / 2
+                  ctx.reset(); ctx.lineWidth = line; ctx.lineCap = "round"
+                  ctx.strokeStyle = track; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2); ctx.stroke()
+                  if (fraction > 0) { ctx.strokeStyle = accent; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, fraction)); ctx.stroke() }
+                }
+                Accessible.role: Accessible.ProgressBar
+                Accessible.name: root.t("Battery")
+                Accessible.description: root.present ? root.measure(root.battery.percentage, "%1%") : ""
+              }
+              Label {
+                anchors.centerIn: parent
+                text: root.present && root.battery.percentage !== null ? root.measure(Math.round(root.battery.percentage), "%1%") : "—"
+                wrapMode: Text.NoWrap
+                font.pixelSize: FoamyStyle.font.displayLarge
+                font.weight: Font.DemiBold
+              }
+            }
+            Column {
+              Layout.fillWidth: true
+              spacing: FoamyStyle.gapSmall
+              Label { width: parent.width; text: root.statusText; font.pixelSize: FoamyStyle.font.heading }
+              Label { width: parent.width; text: root.timeSummary; color: FoamyPalette.secondaryText; font.pixelSize: FoamyStyle.font.subtitle }
+              Label { visible: root.flowing; width: parent.width; text: root.measure(root.battery.rate, "%1 W"); color: FoamyPalette.secondaryText }
+            }
+          }
       }
 
       Column {
         x: FoamyStyle.padding
         width: parent.width - FoamyStyle.padding * 2
+        topPadding: FoamyStyle.sectionGap
         spacing: Style.space(22)
 
-        // Ring gauge and the current readings.
-        RowLayout {
-          visible: root.present
-          width: parent.width
-          spacing: Style.space(24)
-          Item {
-            Layout.preferredWidth: Style.space(112)
-            Layout.preferredHeight: width
-            Canvas {
-              id: ring
-              anchors.fill: parent
-              property real fraction: root.present && root.battery.percentage !== null ? root.battery.percentage / 100 : 0
-              property color accent: FoamyPalette.accent
-              property color track: FoamyPalette.divider
-              onFractionChanged: requestPaint()
-              onAccentChanged: requestPaint()
-              onTrackChanged: requestPaint()
-              onWidthChanged: requestPaint()
-              onHeightChanged: requestPaint()
-              onPaint: {
-                var ctx = getContext("2d"), line = Style.space(6), radius = (Math.min(width, height) - line) / 2
-                ctx.reset(); ctx.lineWidth = line; ctx.lineCap = "round"
-                ctx.strokeStyle = track; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2); ctx.stroke()
-                if (fraction > 0) { ctx.strokeStyle = accent; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, fraction)); ctx.stroke() }
-              }
-              Accessible.role: Accessible.ProgressBar
-              Accessible.name: root.t("Battery")
-              Accessible.description: root.present ? root.measure(root.battery.percentage, "%1%") : ""
-            }
-            Label {
-              anchors.centerIn: parent
-              text: root.present && root.battery.percentage !== null ? root.measure(Math.round(root.battery.percentage), "%1%") : "—"
-              wrapMode: Text.NoWrap
-              font.pixelSize: FoamyStyle.font.displayLarge
-              font.weight: Font.DemiBold
-            }
-          }
-          Column {
-            Layout.fillWidth: true
-            spacing: FoamyStyle.gapSmall
-            Label { width: parent.width; text: root.statusText; font.pixelSize: FoamyStyle.font.heading }
-            Label { width: parent.width; text: root.timeSummary; color: FoamyPalette.secondaryText; font.pixelSize: FoamyStyle.font.subtitle }
-            Label { visible: root.flowing; width: parent.width; text: root.measure(root.battery.rate, "%1 W"); color: FoamyPalette.secondaryText }
-          }
-        }
         Label {
           visible: !root.present
           width: parent.width

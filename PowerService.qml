@@ -97,13 +97,22 @@ QtObject {
     }
   }
 
+  // Re-read the defaults and every battery's sysfs facts; packFacts is
+  // published by collectFacts() once the reloads have completed.
   function reloadFacts() {
     acFile.reload()
     batteryFile.reload()
+    for (var i = 0; i < factReaders.count; i++) {
+      var reader = factReaders.objectAt(i)
+      if (reader) reader.reload()
+    }
+  }
+
+  function collectFacts() {
     var facts = []
     for (var i = 0; i < factReaders.count; i++) {
       var reader = factReaders.objectAt(i)
-      if (reader) facts.push(reader.read())
+      if (reader) facts.push({ threshold: reader.threshold, cycles: reader.cycles })
     }
     packFacts = facts
   }
@@ -125,7 +134,7 @@ QtObject {
   }
 
   onDemandedChanged: if (demanded) refresh()
-  onPacksChanged: Qt.callLater(reloadFacts)
+  onPacksChanged: Qt.callLater(collectFacts)
   Component.onCompleted: { reloadFacts(); refreshProfiles() }
 
   property Process probe: Process {
@@ -198,30 +207,14 @@ QtObject {
     onFileChanged: reload()
   }
 
-  // Charge limit and cycle count per battery, from sysfs (UPower reads the
-  // same files; Quickshell does not expose them).
+  // Charge limit and cycle count per battery (see BatteryFacts): each
+  // reader publishes when its files finish loading.
   property Instantiator factReaders: Instantiator {
     model: root.packs
-    delegate: QtObject {
-      id: reader
+    delegate: BatteryFacts {
       required property var modelData
-      readonly property string supply: Model.safeNative(modelData.nativePath)
-      function read() {
-        if (!supply) return { threshold: null, cycles: null }
-        threshold.reload()
-        cycles.reload()
-        return { threshold: Model.sysfsNumber(threshold.text()), cycles: Model.sysfsNumber(cycles.text()) }
-      }
-      property FileView threshold: FileView {
-        path: reader.supply ? "/sys/class/power_supply/" + reader.supply + "/charge_control_end_threshold" : ""
-        blockLoading: true
-        printErrors: false
-      }
-      property FileView cycles: FileView {
-        path: reader.supply ? "/sys/class/power_supply/" + reader.supply + "/cycle_count" : ""
-        blockLoading: true
-        printErrors: false
-      }
+      supply: modelData.nativePath
+      onUpdated: Qt.callLater(root.collectFacts)
     }
   }
 }

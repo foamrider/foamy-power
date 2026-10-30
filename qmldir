@@ -1,6 +1,7 @@
 singleton PowerService 1.0 PowerService.qml
 BatteryIcon 1.0 BatteryIcon.qml
 Panel 1.0 Panel.qml
+BatteryFacts 1.0 BatteryFacts.qml
 PowerBarContent 1.0 PowerBarContent.qml
 PowerView 1.0 PowerView.qml
 SettingsPane 1.0 SettingsPane.qml

@@ -13,6 +13,12 @@ function number(value, maximum) {
   return finite(value, 0, maximum === undefined ? Number.MAX_VALUE : maximum) ? value : null
 }
 
+// Quickshell's UPowerDevice.changeRate is signed (negative while discharging,
+// per its docs; UPower itself may report the magnitude): watts as a magnitude.
+function watts(value) {
+  return finite(value, -Number.MAX_VALUE, Number.MAX_VALUE) ? Math.abs(value) : null
+}
+
 // A sysfs reading: one non-negative number, or null.
 function sysfsNumber(text) {
   var raw = String(text === undefined || text === null ? "" : text).trim()
@@ -25,11 +31,11 @@ function safeNative(native) {
   return name !== "" && name !== "." && name !== ".." && name.indexOf("/") < 0 && name.indexOf("\0") < 0 ? name : ""
 }
 
-// device: { state, percentage (0-100), rate (W), timeToFull (s) }
+// device: { state, percentage (0-100), rate (W, either sign), timeToFull (s) }
 function batteryState(device, source, threshold) {
   var state = device.state
   var percentage = number(device.percentage, 100)
-  var rate = number(device.rate)
+  var rate = watts(device.rate)
   var fullTime = number(device.timeToFull)
   if (source === "battery" || state === DISCHARGING) return "discharging"
   if (threshold !== null && threshold !== undefined && threshold > 0 && threshold < 100) {
@@ -43,7 +49,7 @@ function batteryState(device, source, threshold) {
 }
 
 // display: { present, isBattery, percentage (0-100), state, capacity (Wh),
-//            rate (W), timeToEmpty, timeToFull }
+//            rate (W, either sign), timeToEmpty, timeToFull }
 // packs:   [{ threshold, cycles }] for every present power-supply battery
 function normalizeBattery(display, packs, source) {
   if (!display || display.present !== true || display.isBattery !== true) return { present: false }
@@ -58,7 +64,7 @@ function normalizeBattery(display, packs, source) {
     percentage: number(display.percentage, 100),
     state: state,
     capacity: number(display.capacity) || null,
-    rate: number(display.rate),
+    rate: watts(display.rate),
     seconds: number(state === "discharging" ? display.timeToEmpty : display.timeToFull),
     cycles: cycles,
     threshold: threshold,

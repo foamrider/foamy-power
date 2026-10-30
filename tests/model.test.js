@@ -32,6 +32,12 @@ assert.equal(battery.threshold,null); assert.equal(battery.cycles,null); assert.
 battery=Model.normalizeBattery(device(),[{threshold:null,cycles:186}],'ac')
 assert.deepEqual(battery,{present:true,percentage:68,state:'charging',capacity:57,rate:24.6,seconds:2520,cycles:186,threshold:null,count:1})
 assert.equal(Model.normalizeBattery(device(),[{}],'battery').seconds,11520)
+// changeRate is negative while discharging (Quickshell): shown as a positive wattage, never dropped.
+assert.equal(Model.normalizeBattery(device({state:2,rate:-9.4}),[{}],'battery').rate,9.4)
+assert.equal(Model.normalizeBattery(device({state:2,rate:9.4}),[{}],'battery').rate,9.4)
+for (const rate of [NaN, Infinity, -Infinity, null, undefined, '9.4']) assert.equal(Model.normalizeBattery(device({rate}),[{}],'ac').rate,null)
+assert.equal(Model.batteryState(device({percentage:80,rate:-0.1}),'ac',80),'holding')
+assert.equal(Model.batteryState(device({percentage:80,rate:-5}),'ac',80),'charging')
 assert.deepEqual(Model.normalizeBattery(null,[],'ac'),{present:false})
 assert.deepEqual(Model.normalizeBattery(device({isBattery:false}),[],'ac'),{present:false})
 for (const value of ['', 'x', '-1', '1e3', 'NaN', null, undefined]) assert.equal(Model.sysfsNumber(value),null)

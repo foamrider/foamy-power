@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "foamy.power",
   "name": "Foamy Power",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "foamrider",
   "description": "Battery status and automatic AC/battery power profiles",
   "license": "MIT",
@@ -26,7 +26,7 @@
       {
         "key": "showPercentage",
         "type": "boolean",
-        "label": "Show bar percentage",
+        "label": "Show percentage in the bar",
         "defaultValue": false
       },
       {

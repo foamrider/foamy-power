@@ -5,7 +5,6 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "kit"
-import "kit/FoamyPrefs.js" as Prefs
 import "Preferences.js" as Preferences
 
 Panel {
@@ -15,22 +14,17 @@ Panel {
 
   readonly property bool vertical: bar && (bar.position === "left" || bar.position === "right")
   readonly property alias popup: popup
-  // Saved values that have not reached `settings` yet, so a second save
-  // never merges over a stale entry.
-  property var savedOverlay: ({})
-  readonly property var preferences: Preferences.withOverlay(root.settings || {}, savedOverlay)
+  readonly property alias prefs: prefs
+  // Saved values (including ones the shell has not reflected yet).
+  readonly property var preferences: prefs.effectiveSettings
   readonly property bool showPercentage: Preferences.value(preferences, "showPercentage")
   readonly property var battery: PowerService.battery
   readonly property string barBatteryState: !PowerService.batteryPresent || PowerService.source === "battery" ? "discharging"
     : battery.state === "charging" ? "charging" : "connected"
   readonly property bool percentageVisible: Preferences.showBarPercentage(preferences, PowerService.fraction, barBatteryState === "discharging")
   readonly property color foreground: bar ? bar.barForeground : Commons.Color.foreground
-  property bool editingSettings: false
-  property string settingsError: ""
-  property var saveQueue: []
-  property bool savingCommand: false
-  property var lastFailedSave: null
-  readonly property bool saving: savingCommand || saveQueue.length > 0
+  readonly property bool editingSettings: settingsState.editing
+  readonly property bool saving: prefs.busy
   readonly property string errors: [PowerService.profilesError, PowerService.actionError]
     .filter(function(e) { return e !== "" }).map(function(e) { return FoamyI18n.t(e) }).join("\n")
 
@@ -43,72 +37,32 @@ Panel {
   FoamyMember { id: member; scope: "power"; demanding: root.opened }
   Binding { target: PowerService; property: "demanded"; value: member.demanded; when: member.isLeader }
 
-  onSettingsChanged: savedOverlay = Preferences.settledOverlay(root.settings || {}, savedOverlay)
-  onOpenedChanged: {
-    if (opened) Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.panelOpened() })
-    else {
-      editingSettings = false
-      if (!saving) savedOverlay = ({})
-    }
-  }
+  onOpenedChanged: if (opened) Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.panelOpened() })
 
-  function openSettings() {
-    editingSettings = true
-    open()
-    Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsOpened() })
+  // Settings page state: lands on Settings even when the popup was closed,
+  // resets only when the popup closes.
+  FoamySettingsState {
+    id: settingsState
+    panel: root
+    onShown: Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsOpened() })
+    onHidden: Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsClosed() })
   }
-  function closeSettings() {
-    editingSettings = false
-    Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsClosed() })
-  }
+  function openSettings() { settingsState.show() }
+  function closeSettings() { settingsState.hide() }
   function retry() {
-    settingsError = ""
-    if (lastFailedSave) savePreference(lastFailedSave.key, lastFailedSave.value)
+    if (prefs.canRetry) prefs.retry()
     PowerService.refresh()
   }
 
-  // Saves run one at a time; later changes wait (newest value per key).
-  function savePreference(key, value) {
-    if (!Preferences.valid(key, value)) return
-    settingsError = ""
-    lastFailedSave = null
-    saveQueue = Preferences.enqueue(saveQueue, key, value)
-    flushSaves()
+  // Settings saves: in order, newest value per key, never over a stale entry.
+  FoamyPrefsQueue {
+    id: prefs
+    bar: root.bar
+    moduleName: root.moduleName
+    fields: Preferences.fields
+    settings: root.settings || ({})
   }
-  function flushSaves() {
-    while (!savingCommand && saveQueue.length > 0) {
-      var item = saveQueue[0]
-      saveQueue = saveQueue.slice(1)
-      var result = Prefs.save(root.bar, root.moduleName, Preferences.fields, root.preferences, item.key, item.value)
-      if (!result.ok) { failSave(item, result.error); continue }
-      if (!result.changed) continue
-      var overlay = Object.assign({}, savedOverlay)
-      overlay[item.key] = item.value
-      savedOverlay = overlay
-      if (result.command.length === 0) continue
-      savingCommand = true
-      saveProcess.item = item
-      saveProcess.command = result.command
-      saveProcess.running = true
-    }
-  }
-  function failSave(item, message) {
-    var overlay = Object.assign({}, savedOverlay)
-    delete overlay[item.key]
-    savedOverlay = overlay
-    lastFailedSave = item
-    settingsError = FoamyI18n.t(message || "Could not save settings.")
-  }
-
-  Process {
-    id: saveProcess
-    property var item: null
-    onExited: function(code) {
-      root.savingCommand = false
-      if (code !== 0) root.failSave(item, "Could not save settings.")
-      Qt.callLater(root.flushSaves)
-    }
-  }
+  function savePreference(key, value) { return prefs.save(key, value) }
 
   FoamyIpc {
     target: "foamy.power"
@@ -161,7 +115,7 @@ Panel {
         busy: PowerService.busy
         editingSettings: root.editingSettings
         saving: root.saving || PowerService.busy
-        settingsError: [root.settingsError, root.errors].filter(function(e) { return e !== "" }).join("\n")
+        settingsError: [prefs.error ? FoamyI18n.t(prefs.error) : "", root.errors].filter(function(e) { return e !== "" }).join("\n")
         onSettingsRequested: root.openSettings()
         onSettingsBack: root.closeSettings()
         onCloseRequestedByView: root.close()

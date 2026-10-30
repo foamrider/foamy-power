@@ -97,14 +97,23 @@ function statusLabel(state) {
   return { charging: "Charging", discharging: "On battery", holding: "Charge limit", charged: "Fully charged", connected: "Connected" }[state] || "Battery unavailable"
 }
 function batteryIcon(percentage, state) {
-  var charging = ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"]
-  var levels = ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
-  if (["charged", "holding", "connected"].indexOf(state) >= 0) return "󱟢"
+  var charging = ["\u{f089c}", "\u{f0086}", "\u{f0087}", "\u{f0088}", "\u{f089d}", "\u{f0089}", "\u{f089e}", "\u{f008a}", "\u{f008b}", "\u{f0085}"]
+  var levels = ["\u{f007a}", "\u{f007b}", "\u{f007c}", "\u{f007d}", "\u{f007e}", "\u{f007f}", "\u{f0080}", "\u{f0081}", "\u{f0082}", "\u{f0079}"]
+  if (["charged", "holding", "connected"].indexOf(state) >= 0) return "\u{f17e2}"
   var index = finite(percentage, 0, 100) ? Math.min(9, Math.floor(percentage / 10)) : 0
   return state === "charging" ? charging[index] : levels[index]
 }
 function profileLabel(profile) {
   return { "power-saver": "Power saver", balanced: "Balanced", performance: "Performance" }[profile] || "Unavailable"
+}
+// FoamyIcon for the popup header: charging, low/warning, or the charge level.
+function headerIcon(battery) {
+  if (!battery || !battery.present) return "battery"
+  if (battery.state === "charging") return "battery-charging"
+  var p = battery.percentage
+  if (!finite(p, 0, 100)) return "battery"
+  if (battery.state === "discharging" && Math.round(p) <= 10) return "battery-warning"
+  return p <= 25 ? "battery-low" : p <= 65 ? "battery-medium" : "battery-full"
 }
 function profileIcon(profile) {
   return { "power-saver": "leaf", balanced: "scale", performance: "gauge" }[profile] || "gauge"
@@ -131,5 +140,5 @@ if (typeof module !== "undefined") module.exports = {
   PROFILES: PROFILES, sysfsNumber: sysfsNumber, safeNative: safeNative, batteryState: batteryState,
   normalizeBattery: normalizeBattery, parseProfiles: parseProfiles, availableProfiles: availableProfiles,
   effectiveDefault: effectiveDefault, statusLabel: statusLabel, batteryIcon: batteryIcon,
-  profileLabel: profileLabel, profileIcon: profileIcon, duration: duration, measurement: measurement
+  profileLabel: profileLabel, headerIcon: headerIcon, profileIcon: profileIcon, duration: duration, measurement: measurement
 }

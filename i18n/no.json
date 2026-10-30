@@ -18,7 +18,7 @@
   "Charging": "Lader",
   "Connected": "Tilkoblet",
   "Copy": "Kopier",
-  "Could not save settings.": "Kunne ikke lagre innstillingene.",
+  "Couldn't save the setting.": "Kunne ikke lagre innstillingen.",
   "Cut": "Klipp ut",
   "Default power profiles": "Standard strømprofiler",
   "Default saved, but the active profile could not be applied. Try again.": "Standarden er lagret, men den aktive profilen kunne ikke brukes. Prøv igjen.",

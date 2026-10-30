@@ -79,7 +79,8 @@ PanelKeyCatcher {
   onActivateRequested: root.activateCursor()
   onCloseRequested: root.closeRequestedByView()
   onTabRequested: function(direction) { root.switchPanelRequested(direction) }
-  onTextKey: function(text) {
+  onTextKey: function(text, modifiers) {
+    if (!cursor.plain(modifiers)) return
     if (text === "s" || text === "S") root.settingsRequested()
     else if (text === "r" || text === "R") root.retryRequested()
   }
@@ -127,7 +128,7 @@ PanelKeyCatcher {
 
       FoamyHeader {
         width: parent.width
-        iconName: "plug"
+        iconName: Model.headerIcon(root.battery)
         title: root.t("Power")
         meta: root.present ? root.measure(root.battery.percentage, "%1%") + " · " + root.statusText : root.statusText
         settingsHasCursor: cursor.at(root.settingsStop)

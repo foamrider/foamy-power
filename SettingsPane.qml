@@ -46,6 +46,7 @@ FoamySettingsPage {
     FoamyDropdown {
       objectName: "acDefault"
       width: parent.width
+      compact: true
       label: FoamyI18n.t("Plugged in (AC)")
       value: root.defaults.ac || ""
       options: root.profileOptions
@@ -55,6 +56,7 @@ FoamySettingsPage {
     FoamyDropdown {
       objectName: "batteryDefault"
       width: parent.width
+      compact: true
       label: FoamyI18n.t("On battery (DC)")
       value: root.defaults.battery || ""
       options: root.profileOptions

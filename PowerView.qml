@@ -188,14 +188,6 @@ PanelKeyCatcher {
         topPadding: FoamyStyle.sectionGap
         spacing: Style.space(22)
 
-        Label {
-          visible: !root.present
-          width: parent.width
-          text: root.statusText
-          color: FoamyPalette.mutedText
-          font.pixelSize: FoamyStyle.font.bodySmall
-        }
-
         Column {
           width: parent.width
           spacing: FoamyStyle.gap

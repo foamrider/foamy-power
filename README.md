@@ -45,6 +45,8 @@ serves every monitor's bar.
 
 ## Development
 
+`kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
+
 ```sh
 node tests/model.test.js
 node tests/i18n.test.cjs

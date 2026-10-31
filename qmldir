@@ -1,9 +1,7 @@
-singleton FoamyI18n 1.0 FoamyI18n.qml
+singleton PowerService 1.0 PowerService.qml
 BatteryIcon 1.0 BatteryIcon.qml
 Panel 1.0 Panel.qml
-PowerAction 1.0 PowerAction.qml
-PowerDropdown 1.0 PowerDropdown.qml
-PowerIcon 1.0 PowerIcon.qml
-PowerPopup 1.0 PowerPopup.qml
+BatteryFacts 1.0 BatteryFacts.qml
+PowerBarContent 1.0 PowerBarContent.qml
 PowerView 1.0 PowerView.qml
 SettingsPane 1.0 SettingsPane.qml

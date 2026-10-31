@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""UPower readings and Omarchy-compatible power-profile preferences."""
+"""Change the power profile or Omarchy's AC/battery default profiles.
+
+Readings (battery, active profile, defaults) come from Quickshell's UPower and
+PowerProfiles services in the widget itself; this helper only runs for a user
+action: `set <profile>` or `default <ac|battery> <profile>`. Defaults are
+written atomically to Omarchy's state files; the action lock lives in the
+user's runtime directory, never in Omarchy's state directory."""
 
 from __future__ import annotations
 
@@ -7,10 +13,8 @@ import argparse
 import contextlib
 import fcntl
 import json
-import math
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
@@ -18,7 +22,8 @@ import tempfile
 PROFILES = ("power-saver", "balanced", "performance")
 UPOWER = "org.freedesktop.UPower"
 ROOT = "/org/freedesktop/UPower"
-DEVICE = UPOWER + ".Device"
+PPD = "net.hadess.PowerProfiles"
+PPD_PATH = "/net/hadess/PowerProfiles"
 
 
 class PowerError(Exception):
@@ -70,101 +75,25 @@ def power_source() -> str:
     return "battery" if on_battery else "ac"
 
 
-def number(value, minimum: float = 0, maximum: float = float("inf")):
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    return value if math.isfinite(value) and minimum <= value <= maximum else None
-
-
-def sysfs_number(native: str, filename: str):
-    # UPower native paths must name one local supply, never traverse the filesystem.
-    if not native or Path(native).name != native or native in (".", ".."):
-        return None
-    try:
-        return number(float((Path("/sys/class/power_supply") / native / filename).read_text()))
-    except (OSError, ValueError):
-        return None
-
-
-def battery_state(device: dict, source: str, threshold):
-    state = device.get("State")
-    percentage = number(device.get("Percentage"), maximum=100)
-    rate = number(device.get("EnergyRate"))
-    full_time = number(device.get("TimeToFull"))
-    if source == "battery" or state == 2:
-        return "discharging"
-    if threshold is not None and 0 < threshold < 100:
-        if state == 5:
-            return "holding"
-        if state == 4 and percentage is not None and percentage >= threshold - 3:
-            return "holding"
-        if (state == 1 and percentage is not None and percentage >= threshold - 1
-                and ((rate is not None and rate <= 0.2)
-                     or (full_time is not None and full_time >= 28800))):
-            return "holding"
-    return {1: "charging", 4: "charged", 5: "connected", 6: "connected"}.get(state, "connected")
-
-
-def normalize_battery(display: dict, batteries: list[dict], source: str) -> dict:
-    present = display.get("IsPresent") is True and display.get("Type") == 2
-    if not present:
-        return {"present": False}
-    thresholds = []
-    cycles = None
-    for battery in batteries:
-        native = battery.get("NativePath", "")
-        threshold = number(battery.get("ChargeEndThreshold"), maximum=100)
-        if not threshold:
-            threshold = sysfs_number(native, "charge_control_end_threshold")
-        thresholds.append(threshold if threshold and threshold <= 100 else None)
-        if len(batteries) == 1:
-            cycles = number(battery.get("ChargeCycles"))
-            if cycles is None:
-                cycles = sysfs_number(native, "cycle_count")
-    # An aggregate battery must not inherit the first pack's limit or cycle count.
-    threshold = thresholds[0] if thresholds and all(v == thresholds[0] for v in thresholds) else None
-    state = battery_state(display, source, threshold)
-    seconds = display.get("TimeToEmpty") if state == "discharging" else display.get("TimeToFull")
-    return {
-        "present": True, "percentage": number(display.get("Percentage"), maximum=100),
-        "state": state, "capacity": number(display.get("EnergyFull")),
-        "rate": number(display.get("EnergyRate")), "seconds": number(seconds),
-        "cycles": cycles, "threshold": threshold, "count": len(batteries),
-    }
-
-
-def read_battery(source: str) -> dict:
-    display = properties(ROOT + "/devices/DisplayDevice", DEVICE)
-    if display.get("IsPresent") is not True or display.get("Type") != 2:
-        return {"present": False}
-    paths = bus_call(ROOT, UPOWER, "EnumerateDevices")
-    if not isinstance(paths, list) or len(paths) > 128:
-        raise PowerError("INVALID_RESPONSE", "Invalid device list from UPower.")
-    batteries = []
-    for path in paths:
-        if not isinstance(path, str) or not path.startswith(ROOT + "/devices/"):
-            raise PowerError("INVALID_RESPONSE", "Invalid device path from UPower.")
-        device = properties(path, DEVICE)
-        if device.get("Type") == 2 and device.get("PowerSupply") is True and device.get("IsPresent") is True:
-            batteries.append(device)
-    return normalize_battery(display, batteries, source)
-
-
 def profile_status() -> tuple[list[str], str]:
-    output = run(["powerprofilesctl", "list"])
-    available = []
-    active = ""
-    for line in output.splitlines():
-        match = re.fullmatch(r"\s*(\*?)\s*(power-saver|balanced|performance):\s*", line)
-        if match:
-            profile = match[2]
-            if profile not in available:
-                available.append(profile)
-            if match[1]:
-                active = profile
+    # Straight from the daemon: powerprofilesctl is a PyGObject script that can
+    # crash on interpreter shutdown under CPython 3.14 (python/cpython#124619).
+    output = run(["busctl", "--system", "--json=short", "get-property", PPD, PPD_PATH, PPD,
+                  "ActiveProfile", "Profiles"])
+    try:
+        lines = [json.loads(line) for line in output.splitlines() if line.strip()]
+        active = lines[0]["data"]
+        listed = [entry["Profile"]["data"] for entry in lines[1]["data"]]
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        raise PowerError("PROFILES_UNAVAILABLE", "Power profiles are unavailable. Check power-profiles-daemon.") from exc
+    available = [profile for profile in PROFILES if profile in listed]
     if not available or active not in available:
         raise PowerError("PROFILES_UNAVAILABLE", "Power profiles are unavailable. Check power-profiles-daemon.")
-    return [profile for profile in PROFILES if profile in available], active
+    return available, active
+
+
+def apply_profile(profile: str):
+    run(["busctl", "--system", "set-property", PPD, PPD_PATH, PPD, "ActiveProfile", "s", profile])
 
 
 def state_directory() -> Path:
@@ -172,40 +101,18 @@ def state_directory() -> Path:
     return Path(override) if override else Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "omarchy/powerprofiles"
 
 
-def read_default(source: str, available: list[str]) -> str:
-    path = state_directory() / source
-    try:
-        value = path.read_text().strip()
-    except FileNotFoundError:
-        value = ""
-    except OSError as exc:
-        raise PowerError("READ_DEFAULT_FAILED", "Cannot read the saved power-profile defaults.") from exc
-    # Match omarchy-powerprofiles-set's effective fallback without creating state on install.
-    if value in available:
-        return value
-    return "performance" if source == "ac" and "performance" in available else "balanced"
-
-
-def snapshot() -> dict:
-    result = {"battery": None, "source": None, "profiles": [], "active": "", "defaults": {}, "errors": []}
-    try:
-        result["source"] = power_source()
-        result["battery"] = read_battery(result["source"])
-    except PowerError as exc:
-        result["errors"].append(exc.payload())
-    try:
-        result["profiles"], result["active"] = profile_status()
-        result["defaults"] = {source: read_default(source, result["profiles"]) for source in ("ac", "battery")}
-    except PowerError as exc:
-        result["errors"].append(exc.payload())
-    return result
+def lock_path() -> Path:
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime and Path(runtime).is_dir():
+        return Path(runtime) / "foamy-power.lock"
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "foamy-power"
+    cache.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return cache / "action.lock"
 
 
 @contextlib.contextmanager
 def action_lock():
-    directory = state_directory()
-    directory.mkdir(parents=True, exist_ok=True)
-    with (directory / ".foamy-power.lock").open("a") as lock:
+    with lock_path().open("a") as lock:
         # Fail promptly when another widget instance is applying a change; do not queue stale intent.
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -216,6 +123,7 @@ def action_lock():
 
 def atomic_default(source: str, profile: str):
     directory = state_directory()
+    directory.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".foamy-power-", dir=directory)
     try:
         with os.fdopen(fd, "w") as stream:
@@ -247,7 +155,7 @@ def change_profile(profile: str, source: str | None = None) -> dict:
             raise PowerError("PROFILE_UNAVAILABLE", "This power profile is not available on this machine.")
         current = power_source()
         if source is None:
-            run(["powerprofilesctl", "set", profile])
+            apply_profile(profile)
             restore_if_source_changed(current)
         else:
             atomic_default(source, profile)
@@ -265,7 +173,6 @@ def change_profile(profile: str, source: str | None = None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("status")
     current = commands.add_parser("set")
     current.add_argument("profile", choices=PROFILES)
     default = commands.add_parser("default")
@@ -273,7 +180,7 @@ def main() -> int:
     default.add_argument("profile", choices=PROFILES)
     args = parser.parse_args()
     try:
-        result = snapshot() if args.command == "status" else change_profile(args.profile, getattr(args, "source", None))
+        result = change_profile(args.profile, getattr(args, "source", None))
         print(json.dumps(result, allow_nan=False))
         return 0
     except PowerError as exc:

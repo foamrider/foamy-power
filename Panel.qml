@@ -1,200 +1,129 @@
 import QtQuick
-import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.UPower
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
-import "Model.js" as Model
+import "kit"
 import "Preferences.js" as Preferences
 
 Panel {
-  id:root
-  moduleName:"foamy.power"
-  ipcTarget:"foamy.power"
-  manageIpc:false
-  readonly property bool vertical:bar&&(bar.position==="left"||bar.position==="right")
-  readonly property string helperPath:decodeURIComponent(Qt.resolvedUrl("power_status.py").toString().replace(/^file:\/\//,""))
-  readonly property string language:FoamyI18n.language
-  readonly property bool showPercentage:Preferences.value(settings,"showPercentage")
-  readonly property bool percentageVisible:Preferences.showBarPercentage(settings,fraction,barBatteryState==="discharging")
-  readonly property bool batteryPresent:!!(UPower.displayDevice&&UPower.displayDevice.isPresent&&UPower.displayDevice.type===UPowerDeviceType.Battery)
-  readonly property real fraction:batteryPresent?Math.max(0,Math.min(1,UPower.displayDevice.percentage)):0
-  readonly property string barBatteryState: {
-    if(!batteryPresent)return "discharging"
-    var state=UPower.displayDevice.state
-    if(UPower.onBattery||state===UPowerDeviceState.Discharging)return "discharging"
-    return state===UPowerDeviceState.Charging&&!(payload.battery&&payload.battery.state==="holding")?"charging":"connected"
+  id: root
+  ipcTarget: "foamy.power"
+  manageIpc: false
+
+  readonly property bool vertical: bar && (bar.position === "left" || bar.position === "right")
+  readonly property alias popup: popup
+  readonly property alias prefs: prefs
+  // Saved values (including ones the shell has not reflected yet).
+  readonly property var preferences: prefs.effectiveSettings
+  readonly property bool showPercentage: Preferences.value(preferences, "showPercentage")
+  readonly property var battery: PowerService.battery
+  readonly property string barBatteryState: !PowerService.batteryPresent || PowerService.source === "battery" ? "discharging"
+    : battery.state === "charging" ? "charging" : "connected"
+  readonly property bool percentageVisible: Preferences.showBarPercentage(preferences, PowerService.fraction, barBatteryState === "discharging")
+  readonly property color foreground: bar ? bar.barForeground : Commons.Color.foreground
+  readonly property bool editingSettings: settingsState.editing
+  readonly property bool saving: prefs.busy
+  readonly property string errors: [PowerService.profilesError, PowerService.actionError]
+    .filter(function(e) { return e !== "" }).map(function(e) { return FoamyI18n.t(e) }).join("\n")
+
+  visible: PowerService.batteryPresent || opened
+  implicitWidth: visible ? button.implicitWidth : 0
+  implicitHeight: visible ? button.implicitHeight : 0
+
+  // Once per shell: readings live in PowerService; the leader owns IPC and
+  // tells the service when any panel is open.
+  FoamyMember { id: member; scope: "power"; demanding: root.opened }
+  Binding { target: PowerService; property: "demanded"; value: member.demanded; when: member.isLeader }
+
+  onOpenedChanged: if (opened) Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.panelOpened() })
+
+  // Settings page state: lands on Settings even when the popup was closed,
+  // resets only when the popup closes.
+  FoamySettingsState {
+    id: settingsState
+    panel: root
+    onShown: Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsOpened() })
+    onHidden: Qt.callLater(function() { if (popup.bodyItem) popup.bodyItem.settingsClosed() })
   }
-  readonly property color foreground:bar?bar.barForeground:Color.foreground
-  property var payload:({battery:null,source:null,profiles:[],active:"",defaults:{},errors:[]})
-  property bool editingSettings:false
-  property string queryError:""
-  property string actionError:""
-  property string settingsError:""
-  property bool refreshPending:false
-  property var pendingPreferences:({})
-  readonly property string errors:([queryError,actionError].concat(payload.errors.map(function(e){return root.tr(e.message)})).filter(function(e){return e!==""}).join("\n"))
-  function tr(label){return FoamyI18n.t(label)}
-  function refresh(){
-    // Coalesce source transitions and post-action reads; never overlap snapshots or publish an old one after a write.
-    if(statusProcess.running||actionProcess.running){refreshPending=true;return}
-    refreshPending=false
-    statusProcess.running=true
+  function openSettings() { settingsState.show() }
+  function closeSettings() { settingsState.hide() }
+  function retry() {
+    if (prefs.canRetry) prefs.retry()
+    PowerService.refresh()
   }
-  function runAction(args){
-    if(actionProcess.running||statusProcess.running)return
-    actionError=""
-    actionProcess.command=["timeout","--kill-after=1s","30s","python3",helperPath].concat(args)
-    actionProcess.running=true
+
+  // Settings saves: in order, newest value per key, never over a stale entry.
+  FoamyPrefsQueue {
+    id: prefs
+    bar: root.bar
+    moduleName: root.moduleName
+    fields: Preferences.fields
+    settings: root.settings || ({})
   }
-  function savePreference(key,value){
-    if(!Preferences.valid(key,value))return
-    settingsError=""
-    pendingPreferences[key]=value
-    flushPreferences()
+  function savePreference(key, value) { return prefs.save(key, value) }
+
+  FoamyIpc {
+    target: "foamy.power"
+    enabled: member.isLeader
+    function open(): void { root.open() }
+    function close(): void { root.close() }
+    function toggle(): void { root.toggle() }
+    function settings(): void { root.openSettings() }
+    function refresh(): void { PowerService.refresh() }
+    function togglePercentage(): void { root.savePreference("showPercentage", !root.showPercentage) }
   }
-  function flushPreferences(){
-    if(preferencesSave.running)return
-    var keys=Object.keys(pendingPreferences)
-    if(!keys.length)return
-    var key=keys[0],value=pendingPreferences[key]
-    delete pendingPreferences[key]
-    preferencesSave.command=["omarchy-shell","shell","setBarWidget",moduleName,key," "+JSON.stringify(value),"{}"]
-    preferencesSave.running=true
-  }
-  function openSettings(){editingSettings=true;open();scroll.contentY=0;Qt.callLater(function(){settingsPane.focusBack()})}
-  function closeSettings(){editingSettings=false;scroll.contentY=0;Qt.callLater(function(){overview.settingsTarget.forceActiveFocus()})}
-  function retry(){queryError="";actionError="";settingsError="";refresh()}
-  visible:batteryPresent||opened
-  implicitWidth:visible?button.implicitWidth:0
-  implicitHeight:visible?button.implicitHeight:0
-  Component.onCompleted:refresh()
-  onOpenedChanged:{scroll.contentY=0;if(opened){refresh();Qt.callLater(function(){if(!root.editingSettings)scroll.forceActiveFocus()})}else editingSettings=false}
-  Connections { target:UPower;function onOnBatteryChanged(){transitionRefresh.restart()} }
-  Connections { target:UPower.displayDevice;function onStateChanged(){transitionRefresh.restart()}function onIsPresentChanged(){root.refresh()} }
-  // Let Omarchy's existing battery service finish restoring the source default before reading its result.
-  Timer { id:transitionRefresh;interval:650;onTriggered:root.refresh() }
-  Timer { interval:5000;running:root.opened;repeat:true;onTriggered:root.refresh() }
-  Process {
-    id:statusProcess
-    command:["timeout","--kill-after=1s","25s","python3",root.helperPath,"status"]
-    stdout:StdioCollector { id:statusOutput;waitForEnd:true }
-    onExited:function(code){
-      if(code!==0)root.queryError=root.tr(root.payload.battery?"Battery readings are stale. Try again.":"Power query failed. Try again.")
-      else {
-        try{root.payload=Model.parsePayload(statusOutput.text);root.queryError=""}
-        catch(error){root.queryError=root.tr("Invalid power status.");console.warn("foamy.power: invalid status response")}
-      }
-      if(root.refreshPending)Qt.callLater(root.refresh)
-    }
-  }
-  Process {
-    id:actionProcess
-    stdout:StdioCollector { id:actionOutput;waitForEnd:true }
-    onExited:function(code){
-      try{
-        var response=JSON.parse(actionOutput.text)
-        if(code!==0||response.ok!==true)root.actionError=response.error&&typeof response.error.message==="string"?root.tr(response.error.message):root.tr("Power action failed. Try again.")
-      }catch(error){root.actionError=root.tr("Power action failed. Try again.")}
-      Qt.callLater(root.refresh)
-    }
-  }
-  Process {
-    id:preferencesSave
-    stdout:StdioCollector { id:saveOutput;waitForEnd:true }
-    onExited:function(code){if(code!==0||saveOutput.text.trim()!=="ok")root.settingsError=root.tr("Could not save settings.");Qt.callLater(root.flushPreferences)}
-  }
-  IpcHandler {
-    target:"foamy.power"
-    function open():void{root.open()}
-    function close():void{root.close()}
-    function toggle():void{root.toggle()}
-    function settings():void{root.openSettings()}
-    function refresh():void{root.refresh()}
-    function togglePercentage():void{root.savePreference("showPercentage",!root.showPercentage)}
-  }
+
   WidgetButton {
-    id:button
-    anchors.fill:parent
-    bar:root.bar
-    text:""
-    labelVisible:false
-    hasVisualContent:true
-    fixedWidth:root.vertical?-1:Math.max(Style.bar.iconSlot,barContent.implicitWidth+Style.bar.iconSlot-Style.bar.iconCanvas)
-    tooltipText:""
-    Row {
-      id:barContent
-      anchors.centerIn:parent
-      spacing:Style.space(1)
-      BatteryIcon { percentage:root.fraction*100;state:root.barBatteryState;width:Style.bar.iconCanvas;height:width;color:root.foreground;anchors.verticalCenter:parent.verticalCenter }
-      Text { visible:root.percentageVisible&&!root.vertical;text:Math.round(root.fraction*100)+"%";textFormat:Text.PlainText;color:root.foreground;font.family:button.fontFamily;font.pixelSize:button.fontSize;anchors.verticalCenter:parent.verticalCenter }
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    text: ""
+    labelVisible: false
+    hasVisualContent: true
+    fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+    tooltipText: ""
+    PowerBarContent {
+      id: barContent
+      anchors.centerIn: parent
+      fraction: PowerService.fraction
+      batteryState: root.barBatteryState
+      showPercentage: root.percentageVisible && !root.vertical
+      foreground: root.foreground
+      fontFamily: button.fontFamily
+      fontSize: button.fontSize
     }
-    onPressed:function(b){if(b===Qt.RightButton)root.savePreference("showPercentage",!root.showPercentage);else root.toggle()}
+    onPressed: function(b) { if (b === Qt.RightButton) root.savePreference("showPercentage", !root.showPercentage); else root.toggle() }
   }
-  PowerPopup {
-    id:panel
-    anchorItem:button
-    owner:root
-    bar:root.bar
-    open:root.opened
-    focusTarget:root.editingSettings?settingsPane.backTarget:scroll
-    padding:0
-    borderSpec:Border.flat(Qt.alpha(Color.popups.text,0.15),1)
-    contentWidth:panel.fittedContentWidth(Style.space(420))
-    contentHeight:panel.fittedContentHeight(Math.min(Style.space(700),root.editingSettings?settingsPane.implicitHeight:overview.implicitHeight))
-    Flickable {
-      id:scroll
-      anchors.fill:parent
-      clip:true
-      contentWidth:width
-      contentHeight:root.editingSettings?settingsPane.implicitHeight:overview.implicitHeight
-      boundsBehavior:Flickable.StopAtBounds
-      flickableDirection:Flickable.VerticalFlick
-      onContentHeightChanged:contentY=Math.max(0,Math.min(contentY,contentHeight-height))
-      onHeightChanged:contentY=Math.max(0,Math.min(contentY,contentHeight-height))
-      Keys.onEscapePressed:root.editingSettings?root.closeSettings():root.close()
-      Connections {
-        target:scroll.Window.window
-        function onActiveFocusItemChanged(){
-          var item=target.activeFocusItem
-          if(!item)return
-          var point=item.mapToItem(scroll.contentItem,0,0)
-          if(point.y<scroll.contentY)scroll.contentY=Math.max(0,point.y-Style.space(8))
-          else if(point.y+item.height>scroll.contentY+scroll.height)scroll.contentY=Math.max(0,Math.min(scroll.contentHeight-scroll.height,point.y+item.height-scroll.height+Style.space(8)))
-        }
-      }
-      Controls.ScrollBar.vertical:Controls.ScrollBar { policy:Controls.ScrollBar.AsNeeded }
+
+  FoamyPopup {
+    id: popup
+    anchorItem: button
+    owner: root
+    bar: root.bar
+    open: root.opened
+    body: Component {
       PowerView {
-        id:overview
-        cornerRadius:Math.max(0,panel.cornerRadius-Border.top(panel.borderSpec))
-        visible:!root.editingSettings
-        width:scroll.width
-        battery:root.payload.battery
-        profiles:root.payload.profiles
-        activeProfile:root.payload.active
-        language:root.language
-        error:root.errors
-        loading:statusProcess.running
-        busy:actionProcess.running||statusProcess.running
-        onSettingsRequested:root.openSettings()
-        onProfileRequested:function(profile){root.runAction(["set",profile])}
-        onRetryRequested:root.retry()
-      }
-      SettingsPane {
-        id:settingsPane
-        visible:root.editingSettings
-        width:scroll.width
-        settings:root.settings
-        profiles:root.payload.profiles
-        defaults:root.payload.defaults
-        language:root.language
-        saving:preferencesSave.running||actionProcess.running||statusProcess.running
-        error:([root.settingsError,root.errors].filter(function(e){return e!==""}).join("\n"))
-        onBack:root.closeSettings()
-        onSave:function(key,value){root.savePreference(key,value)}
-        onSaveDefault:function(source,profile){root.runAction(["default",source,profile])}
-        onRetry:root.retry()
+        battery: PowerService.battery
+        ready: PowerService.ready
+        profiles: PowerService.profiles
+        activeProfile: PowerService.active
+        defaults: PowerService.defaults
+        settings: root.preferences
+        error: root.errors
+        busy: PowerService.busy
+        editingSettings: root.editingSettings
+        saving: root.saving || PowerService.busy
+        settingsError: [prefs.error ? FoamyI18n.t(prefs.error) : "", root.errors].filter(function(e) { return e !== "" }).join("\n")
+        onSettingsRequested: root.openSettings()
+        onSettingsBack: root.closeSettings()
+        onCloseRequestedByView: root.close()
+        onSwitchPanelRequested: function(direction) { root.switchPanel(direction) }
+        onProfileRequested: function(profile) { PowerService.setProfile(profile) }
+        onDefaultRequested: function(source, profile) { PowerService.setDefault(source, profile) }
+        onSaveRequested: function(key, value) { root.savePreference(key, value) }
+        onRetryRequested: root.retry()
       }
     }
   }

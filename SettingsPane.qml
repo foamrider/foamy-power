@@ -1,83 +1,65 @@
 import QtQuick
-import QtQuick.Layouts
 import qs.Commons
-import qs.Ui
+import "kit"
 import "Model.js" as Model
-import "Preferences.js" as Preferences
 
-Column {
-  id:root
+// Power settings on the foamy settings skeleton: bar percentage options and
+// Omarchy's AC/battery default profiles.
+FoamySettingsPage {
+  id: root
+
   required property var settings
-  required property var profiles
-  required property var defaults
-  property string language:"en"
-  property bool saving:false
-  property string error:""
-  property alias backTarget:backButton
-  signal back()
-  signal save(string key,var value)
-  signal saveDefault(string source,string profile)
-  signal retry()
-  function tr(label){return FoamyI18n.t(label)}
-  function focusBack(){backButton.forceActiveFocus()}
-  readonly property color secondary:Qt.tint(Color.popups.background,Qt.alpha(Color.popups.text,0.7))
-  readonly property var profileOptions:profiles.map(function(p){return {value:p,label:root.tr(Model.profileLabel(p))}})
-  padding:Style.space(20)
-  spacing:Style.space(20)
-  RowLayout {
-    width:parent.width-root.padding*2
-    PowerAction { id:backButton;iconName:"arrow-left";foreground:root.secondary;tooltipText:root.tr("Back");onClicked:root.back() }
-    Label { text:root.tr("Settings");Layout.fillWidth:true }
-    Label { visible:root.saving;text:root.tr("Saving…");font.pixelSize:Style.space(11);color:root.secondary }
-  }
-  Column {
-    width:parent.width-root.padding*2
-    spacing:Style.space(8)
-    Label { text:root.tr("General");font.pixelSize:Style.space(11);font.letterSpacing:1.2;font.capitalization:Font.AllUppercase;color:root.secondary }
-    Column {
-      width:parent.width
-      PercentageToggle {
-        id:showPercentageToggle
-        preferenceKey:"showPercentage"
-        label:root.tr("Show bar percentage")
-      }
-      PercentageToggle {
-        visible:showPercentageToggle.checked
-        preferenceKey:"showPercentageWhenLow"
-        label:root.tr("Show only when battery is low")
-      }
-    }
+  property var profiles: []
+  property var defaults: ({})
 
+  signal save(string key, var value)
+  signal saveDefault(string source, string profile)
+
+  readonly property var profileOptions: profiles.map(function(p) { return { value: p, label: FoamyI18n.t(Model.profileLabel(p)) } })
+
+  FoamySettingsSection {
+    width: parent.width
+    title: FoamyI18n.t("Bar")
+    FoamyToggle {
+      id: showPercentageToggle
+      width: parent.width
+      enabled: !root.saving
+      label: FoamyI18n.t("Show percentage in the bar")
+      checked: root.settings.showPercentage === true
+      onClicked: root.save("showPercentage", !checked)
+    }
+    FoamyToggle {
+      visible: showPercentageToggle.checked
+      width: parent.width
+      enabled: !root.saving
+      label: FoamyI18n.t("Show only when battery is low")
+      description: FoamyI18n.t("10% or less while on battery")
+      checked: root.settings.showPercentageWhenLow === true
+      onClicked: root.save("showPercentageWhenLow", !checked)
+    }
   }
-  component PercentageToggle:Toggle {
-    id:percentageToggle
-    required property string preferenceKey
-    width:parent.width
-    implicitHeight:Style.space(36)
-    color:"transparent"
-    borderSpec:activeFocus?Border.flat(Color.accent,1):Border.none()
-    radius:Style.cornerRadius*2
-    fontFamily:"sans-serif"
-    titleSize:Style.space(13)
-    checked:Preferences.value(root.settings,percentageToggle.preferenceKey)
-    enabled:!root.saving
-    onClicked:root.save(percentageToggle.preferenceKey,!percentageToggle.checked)
+
+  FoamySettingsSection {
+    width: parent.width
+    title: FoamyI18n.t("Default power profiles")
+    description: FoamyI18n.t("A profile selected from the main view lasts until the power source changes.")
+    FoamyDropdown {
+      objectName: "acDefault"
+      width: parent.width
+      label: FoamyI18n.t("Plugged in (AC)")
+      value: root.defaults.ac || ""
+      options: root.profileOptions
+      enabled: !root.saving && root.profiles.length > 0
+      onChanged: function(value) { root.saveDefault("ac", value) }
+    }
+    FoamyDropdown {
+      objectName: "batteryDefault"
+      width: parent.width
+      label: FoamyI18n.t("On battery (DC)")
+      value: root.defaults.battery || ""
+      options: root.profileOptions
+      enabled: !root.saving && root.profiles.length > 0
+      onChanged: function(value) { root.saveDefault("battery", value) }
+    }
   }
-  Column {
-    width:parent.width-root.padding*2
-    spacing:Style.space(18)
-    topPadding:Style.space(8)
-    Label { text:root.tr("Default power profiles");font.pixelSize:Style.space(11);font.letterSpacing:1.2;font.capitalization:Font.AllUppercase;color:root.secondary }
-    PowerDropdown { width:parent.width;label:root.tr("Plugged in (AC)");fontFamily:"sans-serif";value:root.defaults.ac||"";options:root.profileOptions;enabled:!root.saving&&root.profiles.length>0;onChanged:function(value){root.saveDefault("ac",value)} }
-    PowerDropdown { width:parent.width;label:root.tr("On battery (DC)");fontFamily:"sans-serif";value:root.defaults.battery||"";options:root.profileOptions;enabled:!root.saving&&root.profiles.length>0;onChanged:function(value){root.saveDefault("battery",value)} }
-    Label { width:parent.width;text:root.tr("A profile selected from the main view lasts until the power source changes.");font.pixelSize:Style.space(12);color:root.secondary;wrapMode:Text.WordWrap }
-  }
-  Column {
-    visible:root.error!==""
-    width:parent.width-root.padding*2
-    spacing:Style.space(8)
-    Label { width:parent.width;text:root.error;color:Color.urgent;wrapMode:Text.WordWrap;Accessible.role:Accessible.AlertMessage }
-    PowerAction { label:root.tr("Retry");iconName:"refresh-cw";foreground:root.secondary;enabled:!root.saving;onClicked:root.retry() }
-  }
-  component Label:Text { textFormat:Text.PlainText;color:Color.popups.text;font.family:"sans-serif";font.pixelSize:Style.space(13) }
 }

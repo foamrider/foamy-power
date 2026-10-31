@@ -1,4 +1,9 @@
 var defaults = {showPercentage:false,showPercentageWhenLow:false}
+// foamy-kit FoamyPrefs schema (mirrors manifest.json barWidget.schema).
+var fields = [
+  {key:"showPercentage",type:"boolean",defaultValue:false},
+  {key:"showPercentageWhenLow",type:"boolean",defaultValue:false}
+]
 function valid(key,value) { return ["showPercentage","showPercentageWhenLow"].indexOf(key)>=0 && typeof value === "boolean" }
 function value(settings,key) { return settings && valid(key,settings[key]) ? settings[key] : defaults[key] }
 function showBarPercentage(settings,fraction,discharging) {
@@ -8,4 +13,4 @@ function showBarPercentage(settings,fraction,discharging) {
     && Math.round(fraction*100) <= 10))
 }
 
-if (typeof module !== "undefined") module.exports={defaults:defaults,valid:valid,value:value,showBarPercentage:showBarPercentage,}
+if (typeof module !== "undefined") module.exports={defaults:defaults,fields:fields,valid:valid,value:value,showBarPercentage:showBarPercentage}

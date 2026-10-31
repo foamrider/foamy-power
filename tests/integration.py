@@ -1,4 +1,4 @@
-"""Exercise the real helper and Omarchy battery service using isolated power fixtures."""
+"""Exercise the real action helper and Omarchy's (4.0.6) battery service with isolated power fixtures."""
 
 import json
 import os
@@ -36,8 +36,13 @@ if pathlib.Path(sys.argv[0]).name=='powerprofilesctl':
         for p in ['power-saver','balanced','performance']: print(('* ' if p==data['active'] else '  ')+p+':')
     elif args[0]=='set':
         data['active']=args[1];path.write_text(json.dumps(data))
-elif 'EnumerateDevices' in args:
-    print(json.dumps({'type':'ao','data':[['/org/freedesktop/UPower/devices/battery_BAT0']]}))
+elif 'net.hadess.PowerProfiles' in args:
+    if data['fail']: sys.exit(1)
+    if 'set-property' in args:
+        data['active']=args[-1];path.write_text(json.dumps(data))
+    else:
+        print(json.dumps({'type':'s','data':data['active']}))
+        print(json.dumps({'type':'aa{sv}','data':[{'Profile':{'type':'s','data':p}} for p in ['power-saver','balanced','performance']]}))
 else:
     is_root='/org/freedesktop/UPower' in args
     values={'OnBattery':data['source']=='battery'} if is_root else {
@@ -77,7 +82,7 @@ ShellRoot {
 
 
 def cli(*args, success=True):
-    response = subprocess.run(["python3", str(plugin / "power_status.py"), *args], env=env, text=True, capture_output=True, timeout=10)
+    response = subprocess.run(["python3", str(plugin / "power_action.py"), *args], env=env, text=True, capture_output=True, timeout=10)
     assert (response.returncode == 0) == success, response.stdout + response.stderr
     return json.loads(response.stdout)
 
@@ -113,8 +118,6 @@ with log_path.open("w") as log:
             time.sleep(0.05)
         else:
             raise AssertionError(log_path.read_text())
-        reading = cli("status")
-        assert reading["battery"]["percentage"] == 68 and reading["battery"]["cycles"] == 186
         cli("default", "ac", "performance")
         wait_active("performance")
         cli("default", "battery", "power-saver")
@@ -124,15 +127,14 @@ with log_path.open("w") as log:
         assert (state / "ac").read_text().strip() == "performance"
         transition("battery")
         wait_active("power-saver")
-        assert cli("status")["battery"]["state"] == "discharging"
         transition("ac")
         wait_active("performance")
         update(fail=True)
         failure = cli("set", "balanced", success=False)
-        assert failure["error"]["code"] == "COMMAND_FAILED"
-        reading = cli("status")
-        assert reading["battery"]["present"] and reading["errors"] and not reading["profiles"]
-        print("PASS: helper commands, shared defaults, temporary override, stock battery service unplug/replug, and unavailable profile service")
+        assert failure["error"]["code"] in ("COMMAND_FAILED", "PROFILES_UNAVAILABLE"), failure
+        assert sorted(p.name for p in state.iterdir()) == ["ac", "battery"], list(state.iterdir())
+        assert (runtime / "foamy-power.lock").exists()
+        print("PASS: helper commands over busctl, atomic shared defaults, temporary override, stock battery service unplug/replug, unavailable profile service, lock outside Omarchy state")
     finally:
         process.terminate()
         try:

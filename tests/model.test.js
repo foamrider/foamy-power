@@ -68,32 +68,34 @@ assert.equal(Model.headerIcon({present:true,state:'discharging',percentage:8}), 
 assert.equal(Model.headerIcon({present:true,state:'connected',percentage:8}), 'battery-low')
 assert.equal(Model.headerIcon({present:true,state:'discharging',percentage:50}), 'battery-medium')
 assert.equal(Model.headerIcon({present:true,state:'holding',percentage:80}), 'battery-full')
-assert.equal(Preferences.value({showPercentage:'true'},'showPercentage'),false)
-assert.equal(Preferences.value({},'showPercentageWhenLow'),false)
-assert.equal(Preferences.value({showPercentageWhenLow:'true'},'showPercentageWhenLow'),false)
-assert.equal(Preferences.valid('showPercentageWhenLow',true),true)
-assert.equal(Preferences.valid('unknown',true),false)
+// Every read goes through the schema: an invalid value is the default.
+assert.equal(Prefs.value(Preferences.fields,{},'showPercentageWhenLow'),false)
+assert.equal(Prefs.value(Preferences.fields,{showPercentageWhenLow:'true'},'showPercentageWhenLow'),false)
+assert.equal(Prefs.value(Preferences.fields,{showPercentageWhenLow:true},'showPercentageWhenLow'),true)
+assert.equal(Prefs.valid(Preferences.fields,'showPercentageWhenLow',true),true)
+assert.equal(Prefs.valid(Preferences.fields,'unknown',true),false)
+const bar=(settings,fraction,discharging)=>Preferences.showBarPercentage(Prefs.values(Preferences.fields,settings),fraction,discharging)
 // The main switch gates both modes; the low-only choice is retained while it is off.
 for (const showPercentage of [false,true]) {
   for (const showPercentageWhenLow of [false,true]) {
     for (const fraction of [0,0.1,0.104,0.105,0.5,1]) {
       for (const discharging of [false,true]) {
-        assert.equal(Preferences.showBarPercentage({showPercentage,showPercentageWhenLow},fraction,discharging),
+        assert.equal(bar({showPercentage,showPercentageWhenLow},fraction,discharging),
           showPercentage && (!showPercentageWhenLow || (discharging && fraction < 0.105)))
       }
     }
   }
 }
 for (const fraction of [null,undefined,NaN,Infinity,-0.1,1.1,'0.1']) {
-  assert.equal(Preferences.showBarPercentage({showPercentage:true,showPercentageWhenLow:true},fraction,true),false)
+  assert.equal(bar({showPercentage:true,showPercentageWhenLow:true},fraction,true),false)
 }
-assert.equal(Preferences.showBarPercentage({showPercentageWhenLow:'true'},0.05,true),false)
-assert.equal(Preferences.showBarPercentage({showPercentage:true,showPercentageWhenLow:'true'},0.5,true),true)
+assert.equal(bar({showPercentageWhenLow:'true'},0.05,true),false)
+assert.equal(bar({showPercentage:'true'},0.5,true),false)
+assert.equal(bar({showPercentage:true,showPercentageWhenLow:'true'},0.5,true),true)
 assert.equal(I18n.text('Show only when battery is low','nb'),'Vis bare ved lavt batterinivå')
-for (const field of Preferences.fields) assert.equal(field.defaultValue,Preferences.defaults[field.key])
 const manifest = require('../manifest.json')
-assert.deepEqual(manifest.barWidget.defaults,Preferences.defaults)
-for (const field of manifest.barWidget.schema) assert.equal(field.defaultValue,Preferences.defaults[field.key])
+assert.deepEqual(manifest.barWidget.defaults,JSON.parse(JSON.stringify(Prefs.values(Preferences.fields,{}))))
+for (const field of manifest.barWidget.schema) assert.equal(field.defaultValue,Prefs.value(Preferences.fields,{},field.key))
 assert.equal(I18n.text('Settings','nb'),'Innstillinger')
 const levels = ['󰁺','󰁻','󰁼','󰁽','󰁾','󰁿','󰂀','󰂁','󰂂','󰁹']
 const charging = ['󰢜','󰂆','󰂇','󰂈','󰢝','󰂉','󰢞','󰂊','󰂋','󰂅']

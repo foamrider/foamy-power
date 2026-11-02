@@ -91,11 +91,13 @@ ShellRoot {
       case 2:
         if (!check(popup.contentWidth === shell.width0, "width stays " + shell.width0 + " in Settings, got " + popup.contentWidth)) return
         if (!check(Plugin.PowerService.demanded === true, "demand while open")) return
+        if (!check(one.showPercentage === false && one.percentageVisible === false, "bar reads the setting through the schema")) return
         // Inline path: the shell entry does not update yet; the second save must carry the first.
         one.savePreference("showPercentage", true)
         one.savePreference("showPercentageWhenLow", true)
         if (!check(shell.calls.length === 2, "two inline saves, got " + shell.calls.length)) return
         if (!check(shell.calls[1].settings.showPercentage === true && shell.calls[1].settings.showPercentageWhenLow === true, "second inline save keeps the first: " + JSON.stringify(shell.calls[1].settings))) return
+        if (!check(one.showPercentage === true, "a pending save reads at once")) return
         // CLI path: both saves run, one after another.
         shell.inline = false
         two.savePreference("showPercentage", true)

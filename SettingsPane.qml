@@ -2,6 +2,8 @@ import QtQuick
 import qs.Commons
 import "kit"
 import "Model.js" as Model
+import "Preferences.js" as Preferences
+import "kit/FoamyPrefs.js" as Prefs
 
 // Power settings on the foamy settings skeleton: bar percentage options and
 // Omarchy's AC/battery default profiles.
@@ -25,7 +27,7 @@ FoamySettingsPage {
       width: parent.width
       enabled: !root.saving
       label: FoamyI18n.t("Show percentage in the bar")
-      checked: root.settings.showPercentage === true
+      checked: Prefs.value(Preferences.fields, root.settings, "showPercentage")
       onClicked: root.save("showPercentage", !checked)
     }
     FoamyToggle {
@@ -34,7 +36,7 @@ FoamySettingsPage {
       enabled: !root.saving
       label: FoamyI18n.t("Show only when battery is low")
       description: FoamyI18n.t("10% or less while on battery")
-      checked: root.settings.showPercentageWhenLow === true
+      checked: Prefs.value(Preferences.fields, root.settings, "showPercentageWhenLow")
       onClicked: root.save("showPercentageWhenLow", !checked)
     }
   }

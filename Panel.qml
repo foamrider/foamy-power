@@ -17,11 +17,11 @@ Panel {
   readonly property alias prefs: prefs
   // Saved values (including ones the shell has not reflected yet).
   readonly property var preferences: prefs.effectiveSettings
-  readonly property bool showPercentage: Preferences.value(preferences, "showPercentage")
+  readonly property bool showPercentage: prefs.value("showPercentage")
   readonly property var battery: PowerService.battery
   readonly property string barBatteryState: !PowerService.batteryPresent || PowerService.source === "battery" ? "discharging"
     : battery.state === "charging" ? "charging" : "connected"
-  readonly property bool percentageVisible: Preferences.showBarPercentage(preferences, PowerService.fraction, barBatteryState === "discharging")
+  readonly property bool percentageVisible: Preferences.showBarPercentage(prefs.values(), PowerService.fraction, barBatteryState === "discharging")
   readonly property color foreground: bar ? bar.barForeground : Commons.Color.foreground
   readonly property bool editingSettings: settingsState.editing
   readonly property bool saving: prefs.busy

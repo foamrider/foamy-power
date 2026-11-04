@@ -4,6 +4,8 @@ Battery status and power profiles for Omarchy 4.5 (also runs on 4.0.6).
 
 ![Foamy Power screenshot](preview.png)
 
+The stock **Super+Ctrl+P** shortcut opens Foamy Power when enabled. The plugin declares itself as the `omarchy.power` replacement, so Omarchy also restores the stock widget when the replacement is removed.
+
 ## Install
 
 Requires Omarchy 4.5 or 4.0.6, UPower, power-profiles-daemon, `busctl`

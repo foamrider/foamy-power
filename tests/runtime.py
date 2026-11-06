@@ -3,7 +3,8 @@ on a chosen Omarchy host and check: one leader owns IPC, PowerService reads
 power profiles once (stub `busctl`) and the AC/battery defaults in process,
 the popup body builds lazily, the width does not change when Settings opens,
 quick successive saves are queued on both the inline and CLI paths, the
-default-profile dropdowns keep following the saved defaults after a selection,
+default-profile dropdowns keep following the saved defaults after a selection
+(whose action reaches the native helper and its JSON reply),
 and re-read sysfs facts are published once their reload completes.
 
   python3 tests/runtime.py [4.0|4.5]      (default: both)
@@ -121,6 +122,8 @@ ShellRoot {
         if (!check(dd.value === "power-saver", "dropdown rebound to the saved default after select, got " + dd.value)) return
         break
       case 7:
+        // The pick ran the helper through FoamyNative; the stub busctl refuses everything but reads.
+        if (!check(!Plugin.PowerService.busy && Plugin.PowerService.actionError === "busctl failed. Check the power service and permissions.", "helper replied through QML: " + Plugin.PowerService.actionError)) return
         if (!check(facts.threshold === 80 && facts.cycles === 186, "sysfs facts loaded: " + facts.threshold + "/" + facts.cycles)) return
         thresholdWriter.setText("60\n")
         cyclesWriter.setText("190\n")

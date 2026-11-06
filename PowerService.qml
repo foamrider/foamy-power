@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import "Model.js" as Model
+import "kit/FoamyNative.js" as FoamyNative
 
 // Power state for every bar instance (one per monitor on 4.5), read in
 // process like Omarchy 4.5's battery service:
@@ -13,7 +14,7 @@ import "Model.js" as Model
 //             after an action, on a power-source change and on Retry (the
 //             daemon may have been down when the shell started)
 //   defaults  Omarchy's ac/battery state files, watched
-// Actions run power_action.py, once, from here.
+// Actions run the native helper (bin/<arch>/foamy-power-helper), once, from here.
 QtObject {
   id: root
 
@@ -65,7 +66,7 @@ QtObject {
 
   property string actionError: ""
   readonly property bool busy: actionProcess.running
-  readonly property string helperPath: decodeURIComponent(Qt.resolvedUrl("power_action.py").toString().replace(/^file:\/\//, ""))
+  readonly property string pluginDir: FoamyNative.localPath(Qt.resolvedUrl("."))
 
   function profileName(profile) {
     if (profile === PowerProfile.PowerSaver) return "power-saver"
@@ -129,7 +130,7 @@ QtObject {
   function runAction(args) {
     if (actionProcess.running) return
     actionError = ""
-    actionProcess.command = ["timeout", "--kill-after=1s", "30s", "python3", helperPath].concat(args)
+    actionProcess.command = ["timeout", "--kill-after=1s", "30s"].concat(FoamyNative.command(pluginDir, "foamy-power-helper", args))
     actionProcess.running = true
   }
 
@@ -153,6 +154,11 @@ QtObject {
   property Process actionProcess: Process {
     stdout: StdioCollector { id: actionOutput; waitForEnd: true }
     onExited: function(code) {
+      if (FoamyNative.unavailable(code)) {
+        // No helper for this CPU (or not executable): say so; actions only run on request, never retried.
+        root.actionError = FoamyNative.UNAVAILABLE_TEXT
+        return
+      }
       try {
         var response = JSON.parse(actionOutput.text)
         if (code !== 0 || response.ok !== true)

@@ -1,0 +1,10 @@
+[package]
+name = "foamy-power-helper"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+foamy-helper = { path = "../kit/rust/foamy-helper" }
+serde_json = "1"

@@ -9,9 +9,11 @@ The stock **Super+Ctrl+P** shortcut opens Foamy Power when enabled. The plugin d
 ## Install
 
 Requires Omarchy 4.5 or 4.0.6, UPower, power-profiles-daemon, `busctl`
-(systemd), Python 3 for profile changes, and the Omarchy font's Nerd Font
-battery glyphs. Keep Omarchy’s built-in battery service enabled for automatic
-profile switching.
+(systemd), an x86_64 or aarch64 CPU for profile changes (the plugin ships a
+prebuilt static helper for both; on other CPUs the widget still shows
+readings and says the helper isn't available), and the Omarchy font's Nerd
+Font battery glyphs. Keep Omarchy’s built-in battery service enabled for
+automatic profile switching.
 
 ```sh
 omarchy plugin add https://github.com/foamrider/foamy-power.git --enable
@@ -49,10 +51,25 @@ serves every monitor's bar.
 
 `kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
 
+Profile changes run `bin/<arch>/foamy-power-helper`, a Rust helper built from
+`native/` (its contract is the comment at the top of `native/src/main.rs`).
+The binaries are committed; after changing `native/` or syncing the kit,
+rebuild and commit them with `native/native.pin` (needs rustup; see the kit's
+"Native helpers"):
+
+```sh
+~/GitHub/Personal/foamy-kit/tools/build-native.sh . --test   # fmt, clippy, cargo test
+~/GitHub/Personal/foamy-kit/tools/build-native.sh .          # both arches, writes native/native.pin
+~/GitHub/Personal/foamy-kit/tools/build-native.sh . --verify # clean rebuild is byte-identical
+```
+
+Tests (Python 3 and node are needed for development only):
+
 ```sh
 node tests/model.test.js
 node tests/i18n.test.cjs
-python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m unittest discover -s tests -p 'test_*.py'   # helper as a process, fake busctl
+FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'  # via qemu binfmt
 python3 tests/integration.py        # helper + Omarchy 4.0.6 battery service, stubbed busctl
 python3 tests/i18n-runtime.py
 python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)

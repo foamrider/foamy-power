@@ -81,8 +81,12 @@ ShellRoot {
 ''')
 
 
+# FOAMY_HELPER: the helper's argv prefix as a JSON list (see test_power_action.py).
+helper = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else ["python3", str(plugin / "power_action.py")]
+
+
 def cli(*args, success=True):
-    response = subprocess.run(["python3", str(plugin / "power_action.py"), *args], env=env, text=True, capture_output=True, timeout=10)
+    response = subprocess.run([*helper, *args], env=env, text=True, capture_output=True, timeout=10)
     assert (response.returncode == 0) == success, response.stdout + response.stderr
     return json.loads(response.stdout)
 

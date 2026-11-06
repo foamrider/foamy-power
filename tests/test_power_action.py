@@ -3,8 +3,9 @@
 nothing else, and temporary HOME/XDG/state directories. Nothing here can reach
 the real power-profiles daemon, UPower or Omarchy's state files.
 
-FOAMY_HELPER is the helper's argv prefix as a JSON list (default: the
-Python helper), e.g.
+FOAMY_HELPER is the helper's argv prefix as a JSON list (default: this
+machine's bin/<arch>/foamy-power-helper), e.g. the aarch64 build through
+qemu binfmt:
   FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'
 """
 
@@ -12,6 +13,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import sys
@@ -32,7 +34,7 @@ def set_profile(profile):
 
 
 def helper_prefix():
-    prefix = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else ["python3", str(PLUGIN / "power_action.py")]
+    prefix = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else [str(PLUGIN / "bin" / platform.machine() / "foamy-power-helper")]
     # Resolve the program now: the helper itself runs with a PATH of fakes only.
     program = prefix[0] if "/" in prefix[0] else shutil.which(prefix[0])
     if not program:

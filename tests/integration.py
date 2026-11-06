@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import tempfile
@@ -82,7 +83,7 @@ ShellRoot {
 
 
 # FOAMY_HELPER: the helper's argv prefix as a JSON list (see test_power_action.py).
-helper = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else ["python3", str(plugin / "power_action.py")]
+helper = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else [str(plugin / "bin" / platform.machine() / "foamy-power-helper")]
 
 
 def cli(*args, success=True):

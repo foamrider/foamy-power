@@ -83,8 +83,9 @@
 //! mode 0600, fsync, rename, directory fsync. Stricter than the Python
 //! helper, which also wrote mode 0600: an existing `<state>/<source>` that is
 //! a symlink or not owned by this user, or a `<state>` that is not owned by
-//! this user or is writable by group or others, is refused
-//! (`STATE_WRITE_FAILED`) instead of replaced. Any other file error is
+//! this user or is writable by everyone without the sticky bit, is refused
+//! (`STATE_WRITE_FAILED`) instead of replaced; a group-writable `<state>` of
+//! this user's own (umask 002) is accepted. Any other file error is
 //! `STATE_WRITE_FAILED` too.
 //!
 //! # Children

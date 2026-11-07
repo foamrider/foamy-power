@@ -1,6 +1,6 @@
 # Foamy Power
 
-Battery status and power profiles for Omarchy 4.5 (also runs on 4.0.6).
+Battery status and power profiles for Omarchy 4.5.
 
 ![Foamy Power panel: battery charging at 41%, power profile choices and battery details](preview.png)
 
@@ -8,7 +8,7 @@ The stock **Super+Ctrl+P** shortcut opens Foamy Power when enabled. The plugin d
 
 ## Install
 
-Requires Omarchy 4.5 or 4.0.6, UPower, power-profiles-daemon, `busctl`
+Requires Omarchy 4.5, UPower, power-profiles-daemon, `busctl`
 (systemd), an x86_64 or aarch64 CPU for profile changes (the plugin ships a
 prebuilt static helper for both; on other CPUs the widget still shows
 readings and says the helper isn't available), and the Omarchy font's Nerd
@@ -74,12 +74,17 @@ node tests/model.test.js
 node tests/i18n.test.cjs
 python3 -m unittest discover -s tests -p 'test_*.py'   # helper as a process, fake busctl
 FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'  # via qemu binfmt
-python3 tests/integration.py        # helper + Omarchy 4.0.6 battery service, stubbed busctl
+python3 tests/integration.py        # helper + the installed 4.5 battery service, stubbed busctl
 python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 bash tests/kit-check.sh
 omarchy-plugin-validate "$PWD"
 ```
+
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
+`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
+`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
+Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
 
 Shared components come from [foamy-kit](https://github.com/foamrider/foamy-kit)
 as stamped copies in `kit/`; don't edit them here. `preview/Preview.qml`
@@ -105,6 +110,6 @@ Licensed under [MIT](LICENSE). Omarchy and Lucide notices are in
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
 
-Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.
+Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.

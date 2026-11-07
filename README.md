@@ -2,7 +2,7 @@
 
 Battery status and power profiles for Omarchy 4.5 (also runs on 4.0.6).
 
-![Foamy Power screenshot](preview.png)
+![Foamy Power panel: battery charging at 41%, power profile choices and battery details](preview.png)
 
 The stock **Super+Ctrl+P** shortcut opens Foamy Power when enabled. The plugin declares itself as the `omarchy.power` replacement, so Omarchy also restores the stock widget when the replacement is removed.
 
@@ -33,10 +33,14 @@ battery is present.
   Enter or Space applies one, S opens settings, R retries after an error, Tab
   or Shift+Tab switches to the neighbouring bar panel and Escape closes.
 
+IPC (`omarchy-shell foamy.power <fn>` on 4.5, `qs ipc call foamy.power <fn>`):
+`open`, `close`, `toggle`, `settings`, `refresh`, `togglePercentage`.
+
 Percentage preferences are stored in `shell.json`. Power defaults
 use Omarchy’s existing files in `~/.local/state/omarchy/powerprofiles` (or the
 configured state directory), written atomically. The plugin's action lock lives
-in `$XDG_RUNTIME_DIR/foamy-power.lock`, never in Omarchy's state directory.
+in `$XDG_RUNTIME_DIR/foamy-power.lock` (without a runtime directory,
+`~/.cache/foamy-power/action.lock`), never in Omarchy's state directory.
 Plugging in or unplugging applies the matching default.
 Charge limits and cycle counts are read from sysfs when available; the plugin
 does not change them.

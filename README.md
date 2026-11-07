@@ -1,17 +1,19 @@
 # Foamy Power
 
-Battery status and power profiles for Omarchy 4.5 (also runs on 4.0.6).
+Battery status and power profiles for Omarchy 4.5.
 
-![Foamy Power screenshot](preview.png)
+![Foamy Power panel: battery charging at 41%, power profile choices and battery details](preview.png)
 
 The stock **Super+Ctrl+P** shortcut opens Foamy Power when enabled. The plugin declares itself as the `omarchy.power` replacement, so Omarchy also restores the stock widget when the replacement is removed.
 
 ## Install
 
-Requires Omarchy 4.5 or 4.0.6, UPower, power-profiles-daemon, `busctl`
-(systemd), Python 3 for profile changes, and the Omarchy font's Nerd Font
-battery glyphs. Keep Omarchy’s built-in battery service enabled for automatic
-profile switching.
+Requires Omarchy 4.5, UPower, power-profiles-daemon, `busctl`
+(systemd), an x86_64 or aarch64 CPU for profile changes (the plugin ships a
+prebuilt static helper for both; on other CPUs the widget still shows
+readings and says the helper isn't available), and the Omarchy font's Nerd
+Font battery glyphs. Keep Omarchy’s built-in battery service enabled for
+automatic profile switching.
 
 ```sh
 omarchy plugin add https://github.com/foamrider/foamy-power.git --enable
@@ -31,10 +33,14 @@ battery is present.
   Enter or Space applies one, S opens settings, R retries after an error, Tab
   or Shift+Tab switches to the neighbouring bar panel and Escape closes.
 
+IPC (`omarchy-shell foamy.power <fn>` on 4.5, `qs ipc call foamy.power <fn>`):
+`open`, `close`, `toggle`, `settings`, `refresh`, `togglePercentage`.
+
 Percentage preferences are stored in `shell.json`. Power defaults
 use Omarchy’s existing files in `~/.local/state/omarchy/powerprofiles` (or the
 configured state directory), written atomically. The plugin's action lock lives
-in `$XDG_RUNTIME_DIR/foamy-power.lock`, never in Omarchy's state directory.
+in `$XDG_RUNTIME_DIR/foamy-power.lock` (without a runtime directory,
+`~/.cache/foamy-power/action.lock`), never in Omarchy's state directory.
 Plugging in or unplugging applies the matching default.
 Charge limits and cycle counts are read from sysfs when available; the plugin
 does not change them.
@@ -49,16 +55,36 @@ serves every monitor's bar.
 
 `kit/` holds shared components copied from [foamy-kit](https://github.com/foamrider/foamy-kit); edit them there, not here.
 
+Profile changes run `bin/<arch>/foamy-power-helper`, a Rust helper built from
+`native/` (its contract is the comment at the top of `native/src/main.rs`).
+The binaries are committed; after changing `native/` or syncing the kit,
+rebuild and commit them with `native/native.pin` (needs rustup; see the kit's
+"Native helpers"):
+
+```sh
+~/GitHub/Personal/foamy-kit/tools/build-native.sh . --test   # fmt, clippy, cargo test
+~/GitHub/Personal/foamy-kit/tools/build-native.sh .          # both arches, writes native/native.pin
+~/GitHub/Personal/foamy-kit/tools/build-native.sh . --verify # clean rebuild is byte-identical
+```
+
+Tests (Python 3 and node are needed for development only):
+
 ```sh
 node tests/model.test.js
 node tests/i18n.test.cjs
-python3 -m unittest discover -s tests -p 'test_*.py'
-python3 tests/integration.py        # helper + Omarchy 4.0.6 battery service, stubbed busctl
+python3 -m unittest discover -s tests -p 'test_*.py'   # helper as a process, fake busctl
+FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'  # via qemu binfmt
+python3 tests/integration.py        # helper + the installed 4.5 battery service, stubbed busctl
 python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
+python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 bash tests/kit-check.sh
 omarchy-plugin-validate "$PWD"
 ```
+
+The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
+`OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
+`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
+Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
 
 Shared components come from [foamy-kit](https://github.com/foamrider/foamy-kit)
 as stamped copies in `kit/`; don't edit them here. `preview/Preview.qml`
@@ -84,6 +110,6 @@ Licensed under [MIT](LICENSE). Omarchy and Lucide notices are in
 
 Provided **as is**, without warranty or guaranteed support. Use at your own risk.
 
-Language follows **Omarchy → Setup → Language** on Omarchy 4.5. Plugin language overrides are no longer used. Omarchy 4.0 displays the plugin in English. Missing translations fall back to English.
+Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` uses the installed shell. Set `OMARCHY_PATH` to a 4.5 source tree to check live language switching against that version.
+Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.

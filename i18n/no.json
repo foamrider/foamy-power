@@ -44,6 +44,7 @@
   "Show only when battery is low": "Vis bare ved lavt batterinivå",
   "Show percentage in the bar": "Vis prosent i panelet",
   "That value isn't allowed.": "Den verdien er ikke tillatt.",
+  "This plugin's helper isn't available for this CPU.": "Hjelpeprogrammet til denne utvidelsen er ikke tilgjengelig for denne prosessoren.",
   "This power profile is not available on this machine.": "Denne strømprofilen er ikke tilgjengelig på denne maskinen.",
   "Unavailable": "Utilgjengelig",
   "Undo": "Angre"

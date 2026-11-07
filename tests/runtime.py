@@ -3,10 +3,15 @@ on a chosen Omarchy host and check: one leader owns IPC, PowerService reads
 power profiles once (stub `busctl`) and the AC/battery defaults in process,
 the popup body builds lazily, the width does not change when Settings opens,
 quick successive saves are queued on both the inline and CLI paths, the
-default-profile dropdowns keep following the saved defaults after a selection,
+default-profile dropdowns keep following the saved defaults after a selection
+(whose action reaches the native helper and its JSON reply),
 and re-read sysfs facts are published once their reload completes.
 
-  python3 tests/runtime.py [4.0|4.5]      (default: both)
+  python3 tests/runtime.py [4.5|4.0|both]      (default: 4.5)
+
+Runs on Omarchy 4.5: the installed /usr/share/omarchy/shell, or the tree in
+FOAMY_HOST_45. 4.0 runs only against an Omarchy 4.0 shell tree in
+FOAMY_HOST_40; without one, 4.0 and `both` print a SKIP line for it.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
@@ -19,6 +24,8 @@ from pathlib import Path
 
 plugin = Path(__file__).resolve().parents[1]
 kit = Path(os.environ.get("FOAMY_KIT", Path.home() / "GitHub/Personal/foamy-kit"))
+# The installed shell is 4.5; set before the harness reads it.
+os.environ.setdefault("FOAMY_HOST_45", "/usr/share/omarchy/shell")
 sys.path.insert(0, str(kit / "preview"))
 import harness  # noqa: E402
 
@@ -121,6 +128,8 @@ ShellRoot {
         if (!check(dd.value === "power-saver", "dropdown rebound to the saved default after select, got " + dd.value)) return
         break
       case 7:
+        // The pick ran the helper through FoamyNative; the stub busctl refuses everything but reads.
+        if (!check(!Plugin.PowerService.busy && Plugin.PowerService.actionError === "busctl failed. Check the power service and permissions.", "helper replied through QML: " + Plugin.PowerService.actionError)) return
         if (!check(facts.threshold === 80 && facts.cycles === 186, "sysfs facts loaded: " + facts.threshold + "/" + facts.cycles)) return
         thresholdWriter.setText("60\n")
         cyclesWriter.setText("190\n")
@@ -193,5 +202,17 @@ def run(host):
     return ok
 
 
-hosts = sys.argv[1:] or ["4.0", "4.5"]
-sys.exit(0 if all([run(h) for h in hosts]) else 1)
+def hosts(args):
+    """4.5 by default; 4.0 only with FOAMY_HOST_40 (no installed 4.0 shell)."""
+    chosen = []
+    for arg in args or ["4.5"]:
+        if arg not in ("4.0", "4.5", "both"):
+            sys.exit(f"unknown host {arg!r}: use 4.5, 4.0 or both")
+        chosen += ["4.5", "4.0"] if arg == "both" else [arg]
+    if "4.0" in chosen and not os.environ.get("FOAMY_HOST_40"):
+        print("SKIP foamy-power runtime 4.0: set FOAMY_HOST_40 to an Omarchy 4.0 shell tree")
+        chosen = [h for h in chosen if h != "4.0"]
+    return list(dict.fromkeys(chosen))
+
+
+sys.exit(0 if all([run(h) for h in hosts(sys.argv[1:])]) else 1)

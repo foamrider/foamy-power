@@ -19,7 +19,6 @@ Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
 `omarchy` CLI is a stub that only logs its arguments.
 """
-import json
 import os
 import shutil
 import sys

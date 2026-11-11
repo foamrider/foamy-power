@@ -6,13 +6,13 @@ import "Model.js" as Model
 Item {
   id: root
   property real percentage: 0
-  property string state: "discharging"
+  property string batteryState: "discharging"
   property color color: "white"
   implicitWidth: 18
   implicitHeight: 18
   Text {
     anchors.fill: parent
-    text: Model.batteryIcon(root.percentage, root.state)
+    text: Model.batteryIcon(root.percentage, root.batteryState)
     textFormat: Text.PlainText
     color: root.color
     font.family: FoamyStyle.monoFamily

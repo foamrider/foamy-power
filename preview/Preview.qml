@@ -1,5 +1,4 @@
 import QtQuick
-import qs.Commons
 import qs.Commons as Commons
 import "../kit"
 import ".." as Power

@@ -1,5 +1,4 @@
 import QtQuick
-import qs.Commons
 import "kit"
 import "Model.js" as Model
 import "Preferences.js" as Preferences

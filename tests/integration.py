@@ -40,6 +40,11 @@ for name in ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_DATA_HO
     env[name] = str(base / name.lower())
 for name in ("WAYLAND_DISPLAY", "DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
     env.pop(name, None)
+# An AppImage's bundled libraries (an editor that started this test) must
+# not replace the system ones under qs, busctl or the helper.
+appdir = os.environ.get("APPDIR", "").rstrip("/")
+env["LD_LIBRARY_PATH"] = ":".join(p for p in os.environ.get("LD_LIBRARY_PATH", "").split(":")
+                                  if p and not (appdir and (p == appdir or p.startswith(appdir + "/"))))
 
 stub = '''#!/usr/bin/python3
 import json,os,pathlib,sys
@@ -174,4 +179,5 @@ with log_path.open("w") as log:
             process.wait()
 shell_log = log_path.read_text()
 assert not any(marker in shell_log for marker in ("ReferenceError", "TypeError", "Failed to load", "Unable to assign")), shell_log
-print("Isolated runtime evidence:", base)
+# Passed: nothing to inspect. A failure above keeps the directory for its log.
+shutil.rmtree(base)

@@ -57,8 +57,17 @@ ShellRoot {
     (app / 'shell.qml').write_text(qml)
     env = dict(os.environ, OMARCHY_PATH=str(omarchy), OMARCHY_LANGUAGE_FILE=str(language),
                XDG_RUNTIME_DIR=str(runtime), QT_QPA_PLATFORM='offscreen',
-               QT_QPA_PLATFORMTHEME='generic', QT_QUICK_BACKEND='software')
-    env.pop('WAYLAND_DISPLAY', None)
+               QT_QPA_PLATFORMTHEME='generic', QT_QUICK_BACKEND='software',
+               HOME=str(base / 'home'), XDG_CONFIG_HOME=str(base / 'config'), XDG_STATE_HOME=str(base / 'state'),
+               XDG_CACHE_HOME=str(base / 'cache'), XDG_DATA_HOME=str(base / 'data'))
+    # Nothing here may reach the desktop: no compositor, no display, no
+    # session bus, and not an AppImage's bundled libraries in place of the system's.
+    for name in ('WAYLAND_DISPLAY', 'DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE'):
+        env.pop(name, None)
+    env['DBUS_SESSION_BUS_ADDRESS'] = f'unix:path={base}/no-session-bus'
+    appdir = os.environ.get('APPDIR', '').rstrip('/')
+    env['LD_LIBRARY_PATH'] = ':'.join(p for p in os.environ.get('LD_LIBRARY_PATH', '').split(':')
+                                      if p and not (appdir and (p == appdir or p.startswith(appdir + '/'))))
     result = subprocess.run(['quickshell', '-p', str(app), '--no-color'], env=env,
                             capture_output=True, text=True, timeout=10)
     output = result.stdout + result.stderr

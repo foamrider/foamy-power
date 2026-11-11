@@ -12,9 +12,9 @@ How the lists are made:
 
 ## `foamy-power-helper`
 
-- `bin/aarch64/foamy-power-helper`: sha256 `0afcb841f3ca09baf84c8b9f8ebf48d550524bf93d796fe6269d747624872552`
-- `bin/x86_64/foamy-power-helper`: sha256 `3d6f53878a01ef50564fe660e5c0a576bc934c56e6aa75a1ed2c98a10af8ebd2`
-- `native/native.pin`: source `7f72f5ca81f7bfdfe9adb826c307e73228493f594bfcc37437a2fe6f23a8a3ff`, toolchain 1.99.1
+- `bin/aarch64/foamy-power-helper`: sha256 `bc43682fc6ece4b7ef6b343c0e675cd9cc2baf10c26ecc20a7d9312d9e1af57f`
+- `bin/x86_64/foamy-power-helper`: sha256 `b782fb11d495dfb06e886301d7f25502866c9d9cb9dc58db1158a0d4e7dd54aa`
+- `native/native.pin`: source `09e0f2195223bf29ea1fb05fee0b4fd64fe14756ba8987b7acd4ed74fec43e71`, toolchain 1.99.1
 
 ### Crates linked into `foamy-power-helper`
 

@@ -92,19 +92,22 @@
 //!
 //! Run by name from `PATH`, with the helper's environment plus `LC_ALL=C`,
 //! stdin `/dev/null`, stdout and stderr captured (at most 256 KiB each; more
-//! kills the child: `COMMAND_FAILED`), a 5 s deadline each (`TIMEOUT`; the
-//! whole process group is killed), their own process group and
-//! `PR_SET_PDEATHSIG`. Not found: `MISSING_COMMAND`; another start failure
-//! or a non-zero exit: `COMMAND_FAILED` (the Python helper reported a start
-//! failure other than "not found" as `STATE_WRITE_FAILED`). The caller wraps
-//! the helper in `timeout --kill-after=1s 30s`.
+//! kills the child: `COMMAND_FAILED`), a 5 s deadline each and every one
+//! ended within 25 s of the helper's start (`TIMEOUT`, also for a child that
+//! would start later; the whole process group is killed), their own process
+//! group and `PR_SET_PDEATHSIG`. Not found: `MISSING_COMMAND`; another start
+//! failure or a non-zero exit: `COMMAND_FAILED` (the Python helper reported
+//! a start failure other than "not found" as `STATE_WRITE_FAILED`). The
+//! caller wraps the helper in `timeout --kill-after=1s 30s`; the 25 s budget
+//! keeps every action inside it, so that wrapper never has to end the helper.
 
 use std::ffi::OsString;
 use std::fs::DirBuilder;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::time::Duration;
+use std::sync::LazyLock;
+use std::time::{Duration, Instant};
 
 use foamy_helper::child::Bounded;
 use foamy_helper::lock::FileLock;
@@ -117,6 +120,13 @@ const ROOT: &str = "/org/freedesktop/UPower";
 const PPD: &str = "net.hadess.PowerProfiles";
 const PPD_PATH: &str = "/net/hadess/PowerProfiles";
 const CHILD_TIMEOUT: Duration = Duration::from_secs(5);
+/// Up to ten children at `CHILD_TIMEOUT` each would outlast the widget's
+/// `timeout 30s`, which ends only the helper: a child's own process group
+/// (`omarchy-powerprofiles-set` and its `powerprofilesctl`) would survive it
+/// and could change the profile after the widget showed the failure. Within
+/// this budget `Bounded` ends every child group itself and the reply is JSON.
+const ACTION_BUDGET: Duration = Duration::from_secs(25);
+static STARTED: LazyLock<Instant> = LazyLock::new(Instant::now);
 const MAX_OUTPUT: usize = 256 * 1024;
 const SOURCE_TRIES: usize = 3;
 
@@ -186,10 +196,15 @@ fn parse_args(args: &[OsString]) -> Result<Action, Failure> {
 
 /// Runs a system tool within the bounds above; its stdout on success.
 fn run(program: &str, args: &[&str]) -> Result<String, Failure> {
+    let timed_out = || failure("TIMEOUT", "Power service timed out. Try again.");
+    let left = ACTION_BUDGET.saturating_sub(STARTED.elapsed());
+    if left.is_zero() {
+        return Err(timed_out());
+    }
     let output = Bounded::new(program)
         .args(args)
         .env("LC_ALL", "C")
-        .timeout(CHILD_TIMEOUT)
+        .timeout(CHILD_TIMEOUT.min(left))
         .max_output(MAX_OUTPUT)
         .run();
     let failed = || {
@@ -210,7 +225,7 @@ fn run(program: &str, args: &[&str]) -> Result<String, Failure> {
         Err(_) => return Err(failed()),
     };
     if output.timed_out {
-        return Err(failure("TIMEOUT", "Power service timed out. Try again."));
+        return Err(timed_out());
     }
     if !output.success() {
         return Err(failed());
@@ -466,6 +481,7 @@ fn error_reply(failure: &Failure) -> Value {
 }
 
 fn main() -> ExitCode {
+    LazyLock::force(&STARTED);
     json::run(
         || {
             let args: Vec<OsString> = std::env::args_os().skip(1).collect();

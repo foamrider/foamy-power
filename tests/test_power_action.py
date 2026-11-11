@@ -299,6 +299,26 @@ class BoundaryTests(Helper):
                          {"code": "TIMEOUT", "message": "Power service timed out. Try again."})
         self.assertLess(time.monotonic() - started, 10)
 
+    def test_slow_service_answers_within_the_widget_deadline(self):
+        # Every call answers inside its 5 s deadline and the source keeps
+        # changing: the nine calls of `set` would take 31.5 s. The widget's
+        # wrapper (as in PowerService.qml) kills only the helper at 30 s, so
+        # the helper must reply before that itself.
+        self.write_fixture(sources=["ac", "battery"] * 10,
+                           sleep={"get-property": 3.5, "GetAll": 3.5, "set-property": 3.5, "omarchy-powerprofiles-set": 3.5})
+        started = time.monotonic()
+        result = subprocess.run([shutil.which("timeout"), "--kill-after=1s", "30s", *HELPER, "set", "balanced"], env=self.env, cwd=self.base,
+                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=40)
+        elapsed = time.monotonic() - started
+        self.assertEqual(result.returncode, 1, f"{result.stdout}{result.stderr} after {elapsed:.1f} s")
+        self.assertEqual(json.loads(result.stdout)["error"]["code"], "TIMEOUT")
+        self.assertLess(elapsed, 27)
+        # Nothing the helper started outlives its reply (each fake saves the
+        # fixture when it finishes).
+        fixture = (self.bin / "fixture.json").read_text()
+        time.sleep(4)
+        self.assertEqual((self.bin / "fixture.json").read_text(), fixture)
+
     def test_commands_run_in_the_c_locale(self):
         self.helper("default", "ac", "balanced", env={**self.env, "LC_ALL": "nb_NO.UTF-8"})
         self.assertEqual({call["lc_all"] for call in self.calls()}, {"C"})

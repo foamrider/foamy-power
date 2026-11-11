@@ -1,9 +1,11 @@
 """Exercise the real action helper and Omarchy 4.5's battery service with isolated power fixtures.
 
-The battery service, Commons and omarchy scripts come from the installed Omarchy
+The battery service, Commons and the two power-profile scripts
+(omarchy-powerprofiles-set and -list) come from the installed Omarchy
 (OMARCHY_PATH, default /usr/share/omarchy). Its QML is loaded with UPower and
 power-profiles-daemon mocked; `busctl`, `powerprofilesctl` and `omarchy-shell`
-are stubs, and HOME, the XDG directories and the session bus are temporary.
+are stubs, no other Omarchy script is on PATH, and HOME, the XDG directories
+and the session bus are temporary.
 """
 
 import json
@@ -28,9 +30,15 @@ state = base / "powerprofiles"
 state.mkdir()
 fixture = base / "fixture.json"
 fixture.write_text(json.dumps({"source": "ac", "active": "balanced", "fail": False}))
+# Only the scripts under test run for real; every other Omarchy script (a
+# later version of these may call more) is absent rather than the desktop's.
+for name in ("omarchy-powerprofiles-set", "omarchy-powerprofiles-list"):
+    (bin_dir / name).symlink_to(omarchy / "bin" / name)
+host_bins = {os.path.realpath(omarchy / "bin"), os.path.realpath("/usr/share/omarchy/bin")}
+system_path = [p for p in os.environ["PATH"].split(":") if p and os.path.realpath(p) not in host_bins]
 env = {**os.environ, "HOME": str(base), "XDG_RUNTIME_DIR": str(runtime),
        "OMARCHY_POWERPROFILES_STATE_DIR": str(state), "POWER_FIXTURE": str(fixture),
-       "PATH": str(bin_dir) + ":" + str(omarchy / "bin") + ":" + os.environ["PATH"],
+       "PATH": ":".join([str(bin_dir), *system_path]),
        "QT_QPA_PLATFORM": "offscreen", "QT_QPA_PLATFORMTHEME": "basic", "QT_STYLE_OVERRIDE": "Fusion",
        "OMARCHY_PATH": str(omarchy), "FOAMY_TEST_APP": str(app),
        # No session bus: nothing here may reach the desktop's.

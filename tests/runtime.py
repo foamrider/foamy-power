@@ -5,7 +5,9 @@ the popup body builds lazily, the width does not change when Settings opens,
 quick successive saves are queued on both the inline and CLI paths, the
 default-profile dropdowns keep following the saved defaults after a selection
 (whose action reaches the native helper and its JSON reply),
-and re-read sysfs facts are published once their reload completes.
+and re-read sysfs facts are published once their reload completes. A second
+run, with nothing on PATH but `qs`, checks that a profile read or an action
+whose command can't start ends with an error instead of empty data.
 
   python3 tests/runtime.py [4.5|4.0|both]      (default: 4.5)
 
@@ -19,6 +21,7 @@ temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
 """
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -166,6 +169,69 @@ ShellRoot {
 }
 '''
 
+# Neither `busctl` nor `timeout` can start: Quickshell then emits no exited(),
+# only running -> false. Both must still end, with an error.
+FAILED_START = r'''import QtQuick
+import Quickshell
+import qs.Ui
+import "harness"
+import "plugin" as Plugin
+
+ShellRoot {
+  id: shell
+  property int step: 0
+  property int waited: 0
+  function fail(message) { console.log("FOAMY FAIL " + message); Qt.quit() }
+  FloatingWindow {
+    implicitWidth: 1920; implicitHeight: 1080
+    ScreenSim { fullScreenBar: Quickshell.env("FOAMY_HOST") === "4.5" }
+    Plugin.Panel { id: one; x: 1400; y: 4; width: 30; height: 26 }
+  }
+  MockBar { id: bar; shell: QtObject { function updateEntryInline(id, settings) { return true } } }
+  Component.onCompleted: { one.bar = bar; one.moduleName = "foamy.power"; one.settings = {}; tick.start() }
+  Timer {
+    id: tick
+    interval: 200; repeat: true
+    onTriggered: {
+      var service = Plugin.PowerService
+      // Allow a loaded machine up to 10 s for each failure to arrive.
+      if (++shell.waited > 50) return shell.fail("step " + shell.step + ": profiles " + JSON.stringify(service.profilesError) + ", action " + JSON.stringify(service.actionError) + ", busy " + service.busy)
+      if (shell.step === 0) {
+        if (service.profilesError === "") return
+        if (service.profilesKnown || service.probe.running) return shell.fail("probe that couldn't start still pending")
+        service.setProfile("balanced")
+        shell.step = 1; shell.waited = 0
+      } else if (shell.step === 1) {
+        if (service.actionError === "") return
+        if (service.busy || service.actionError !== "Power action failed. Try again.") return shell.fail("action that couldn't start: " + service.actionError + " busy " + service.busy)
+        // The next request runs again: nothing stayed in flight.
+        service.refresh()
+        shell.step = 2; shell.waited = 0
+      } else if (shell.step === 2) {
+        if (service.profilesError === "" || service.actionError !== "") return
+        console.log("FOAMY DONE")
+        Qt.quit()
+      }
+    }
+  }
+}
+'''
+
+
+def run_failed_start(host):
+    r = harness.Run(host, FAILED_START, plugin=plugin, prefix=f"foamy-power-nostart-{host}-")
+    stub = r.base / "bin"
+    stub.mkdir()
+    (stub / "qs").symlink_to(shutil.which("qs"))
+    r.env["PATH"] = str(stub)
+    r.run(timeout=40)
+    ok = r.ok
+    if not ok:
+        print(r.log)
+    print(f"foamy-power runtime {host} (commands that can't start): {'pass' if ok else 'FAIL'}")
+    r.cleanup()
+    return ok
+
 
 def run(host):
     r = harness.Run(host, SHELL,
@@ -215,4 +281,4 @@ def hosts(args):
     return list(dict.fromkeys(chosen))
 
 
-sys.exit(0 if all([run(h) for h in hosts(sys.argv[1:])]) else 1)
+sys.exit(0 if all([ok for h in hosts(sys.argv[1:]) for ok in (run(h), run_failed_start(h))]) else 1)

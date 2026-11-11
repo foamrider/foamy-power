@@ -50,6 +50,7 @@ QtObject {
   property bool profilesKnown: false
   property string profilesError: ""
   property bool probePending: false
+  property bool probeInFlight: false
   property int profileSignals: 0
   property int probeSignals: 0
 
@@ -65,6 +66,7 @@ QtObject {
   } : ({})
 
   property string actionError: ""
+  property bool actionInFlight: false
   readonly property bool busy: actionProcess.running
   readonly property string pluginDir: FoamyNative.localPath(Qt.resolvedUrl("."))
 
@@ -79,7 +81,18 @@ QtObject {
     if (probe.running) { probePending = true; return }
     probePending = false
     probeSignals = profileSignals
+    probeInFlight = true
     probe.running = true
+  }
+
+  // Each probe run ends here once: through exited() on any exit, or through
+  // running -> false alone when busctl couldn't start (Quickshell emits no
+  // exited() then), so a failed start reads as unavailable, not as no data.
+  function finishProbe(text) {
+    if (!probeInFlight) return
+    probeInFlight = false
+    applyProbe(text)
+    if (probePending) Qt.callLater(refreshProfiles)
   }
 
   function applyProbe(text) {
@@ -131,45 +144,50 @@ QtObject {
     if (actionProcess.running) return
     actionError = ""
     actionProcess.command = ["timeout", "--kill-after=1s", "30s"].concat(FoamyNative.command(pluginDir, "foamy-power-helper", args))
+    actionInFlight = true
     actionProcess.running = true
+  }
+
+  // Each action ends here once, like finishProbe: a wrapper that couldn't
+  // start emits no exited(), only running -> false, and must still fail.
+  function finishAction(code, text) {
+    if (!actionInFlight) return
+    actionInFlight = false
+    if (FoamyNative.unavailable(code)) {
+      // No helper for this CPU (or not executable): say so; actions only run on request, never retried.
+      actionError = FoamyNative.UNAVAILABLE_TEXT
+      return
+    }
+    try {
+      var response = JSON.parse(text)
+      if (code !== 0 || response.ok !== true)
+        actionError = response.error && typeof response.error.message === "string" ? response.error.message : "Power action failed. Try again."
+    } catch (error) {
+      actionError = "Power action failed. Try again."
+    }
+    acFile.reload()
+    batteryFile.reload()
+    Qt.callLater(refreshProfiles)
   }
 
   onDemandedChanged: if (demanded) refresh()
   onPacksChanged: Qt.callLater(collectFacts)
   Component.onCompleted: { reloadFacts(); refreshProfiles() }
 
+  // busctl bounds itself: sd-bus waits at most 25 s for the daemon's reply.
+  // The reply is two short lines from a system service; the collected text
+  // is complete when exited() arrives.
   property Process probe: Process {
     command: ["busctl", "--json=short", "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile", "Profiles"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.applyProbe(text)
-    }
-    onExited: function(code) {
-      if (code !== 0) root.applyProbe("")
-      // Deferred: the process still reports running while it signals exit.
-      if (root.probePending) Qt.callLater(root.refreshProfiles)
-    }
+    stdout: StdioCollector { id: probeOutput; waitForEnd: true }
+    onExited: function(code) { root.finishProbe(code === 0 ? probeOutput.text : "") }
+    onRunningChanged: if (!running) root.finishProbe("")
   }
 
   property Process actionProcess: Process {
     stdout: StdioCollector { id: actionOutput; waitForEnd: true }
-    onExited: function(code) {
-      if (FoamyNative.unavailable(code)) {
-        // No helper for this CPU (or not executable): say so; actions only run on request, never retried.
-        root.actionError = FoamyNative.UNAVAILABLE_TEXT
-        return
-      }
-      try {
-        var response = JSON.parse(actionOutput.text)
-        if (code !== 0 || response.ok !== true)
-          root.actionError = response.error && typeof response.error.message === "string" ? response.error.message : "Power action failed. Try again."
-      } catch (error) {
-        root.actionError = "Power action failed. Try again."
-      }
-      acFile.reload()
-      batteryFile.reload()
-      Qt.callLater(root.refreshProfiles)
-    }
+    onExited: function(code) { root.finishAction(code, actionOutput.text) }
+    onRunningChanged: if (!running) root.finishAction(-1, "")
   }
 
   property Connections profileWatcher: Connections {

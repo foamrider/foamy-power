@@ -47,9 +47,9 @@ does not change them.
 
 Readings come from Quickshell's UPower and PowerProfiles services in the shell
 itself: nothing polls, and no helper runs while you only look. One `busctl`
-read of the active profile runs at startup, after a change, on a power-source
-change and on **Retry** (as Omarchy 4.5's battery service does). One service
-serves every monitor's bar.
+read of the active profile runs at startup, when the panel opens, after a
+change, on a power-source change and on **Retry** (as Omarchy 4.5's battery
+service does). One service serves every monitor's bar.
 
 ## Development
 

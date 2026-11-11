@@ -11,8 +11,9 @@ import "kit/FoamyNative.js" as FoamyNative
 //   battery   UPower display device + batteries (signals, no polling); charge
 //             limit and cycle count from sysfs, re-read when a panel opens
 //   profiles  PowerProfiles change signals, plus one `busctl` read at start,
-//             after an action, on a power-source change and on Retry (the
-//             daemon may have been down when the shell started)
+//             when a panel opens, after an action, on a power-source change
+//             and on Retry (the daemon may have been down when the shell
+//             started)
 //   defaults  Omarchy's ac/battery state files, watched
 // Actions run the native helper (bin/<arch>/foamy-power-helper), once, from here.
 QtObject {

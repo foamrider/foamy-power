@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
@@ -171,10 +170,7 @@ log_path = base / "runtime.log"
 with log_path.open("w") as log:
     # Its own process group: the stock service's omarchy-powerprofiles-set (and
     # the `qs ipc` it starts) end with the shell below.
-    process = subprocess.Popen(
-        ["qs", "-p", str(app), "--no-color"], env=env, stdout=log, stderr=log, start_new_session=True
-    )
-    try:
+    with hostenv.ProcessGroup(["qs", "-p", str(app), "--no-color"], env=env, stdout=log, stderr=log) as shell:
 
         def transition(source):
             update(source=source)
@@ -200,7 +196,7 @@ with log_path.open("w") as log:
                 return False
             return response.returncode == 0 and response.stdout.strip() == "ok"
 
-        if not harness.wait_for(ready, 30, stop=lambda: process.poll() is not None):
+        if not harness.wait_for(ready, 30, stop=lambda: shell.exit_status() is not None):
             raise AssertionError(log_path.read_text())
         cli("default", "ac", "performance")
         wait_active("performance")
@@ -221,17 +217,6 @@ with log_path.open("w") as log:
         print(
             "PASS: helper commands over busctl, atomic shared defaults, temporary override, stock battery service unplug/replug, unavailable profile service, lock outside Omarchy state"
         )
-    finally:
-        os.killpg(process.pid, signal.SIGTERM)
-        try:
-            process.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
 shell_log = log_path.read_text()
 assert not any(
     marker in shell_log for marker in ("ReferenceError", "TypeError", "Failed to load", "Unable to assign")

@@ -62,9 +62,6 @@ PowerView.qml: unqualified: Unqualified access | opacity: root.busy ? FoamyStyle
 PowerView.qml: unqualified: Unqualified access | readonly property bool selected: root.activeProfile === modelData
 PowerView.qml: unqualified: Unqualified access | root.profileRequested(modelData)
 PowerView.qml: unqualified: Unqualified access | text: root.t(Model.profileLabel(profileButton.modelData))
-preview/Preview.qml: id-shadows-member: Id for object FoamyPopup shadows property "popup". Rename one or the other. | readonly property Item popup: popup
-preview/Preview.qml: id-shadows-member: Note: Id defined here | id: popup
-preview/Preview.qml: incompatible-type: Cannot assign binding of type FoamyPopup to QQuickItem | readonly property Item popup: popup
 preview/Preview.qml: missing-property: Member "background" not found on type "QObject" | color: Commons.Color.bar.background
 preview/Preview.qml: missing-property: Member "text" not found on type "QObject" | foreground: Commons.Color.bar.text
 preview/Preview.qml: unqualified: Unqualified access | activeProfile: preview.noProfiles ? "" : "balanced"

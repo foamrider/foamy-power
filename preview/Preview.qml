@@ -10,7 +10,7 @@ Item {
   required property Item anchorItem
   property var previewStates: ["discharging", "charging", "holding", "unavailable", "settings", "bar"]
   property string previewState: "discharging"
-  readonly property Item popup: popup
+  readonly property var popup: previewPopup
 
   readonly property var batteries: ({
       discharging: {
@@ -61,7 +61,7 @@ Item {
   readonly property bool noProfiles: previewState === "unavailable"
 
   FoamyPopup {
-    id: popup
+    id: previewPopup
     anchorItem: preview.anchorItem
     bar: preview.bar
     open: true

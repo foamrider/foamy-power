@@ -75,7 +75,7 @@ node tests/i18n.test.cjs
 python3 -m unittest discover -s tests -p 'test_*.py'   # helper as a process, fake busctl
 FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'  # via qemu binfmt
 python3 tests/integration.py        # helper + the installed 4.5 battery service, stubbed busctl
-python3 tests/i18n-runtime.py
+python3 "$FOAMY_KIT/preview/i18n_runtime.py" .   # catalogs, live language switch
 python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
 bash tests/kit-check.sh
 omarchy-plugin-validate "$PWD"
@@ -164,4 +164,4 @@ Provided **as is**, without warranty or guaranteed support. Use at your own risk
 
 Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
+Translation checks: foamy-kit's `preview/i18n_runtime.py .` checks live language switching on the installed shell.

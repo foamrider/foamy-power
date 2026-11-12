@@ -25,8 +25,18 @@ import unittest
 PLUGIN = Path(__file__).resolve().parents[1]
 PPD = ["net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles"]
 GET_PROFILES = ["busctl", "--system", "--json=short", "get-property", *PPD, "ActiveProfile", "Profiles"]
-GET_SOURCE = ["busctl", "--system", "--json=short", "call", "org.freedesktop.UPower", "/org/freedesktop/UPower",
-              "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.UPower"]
+GET_SOURCE = [
+    "busctl",
+    "--system",
+    "--json=short",
+    "call",
+    "org.freedesktop.UPower",
+    "/org/freedesktop/UPower",
+    "org.freedesktop.DBus.Properties",
+    "GetAll",
+    "s",
+    "org.freedesktop.UPower",
+]
 
 
 def set_profile(profile):
@@ -34,7 +44,11 @@ def set_profile(profile):
 
 
 def helper_prefix():
-    prefix = json.loads(os.environ["FOAMY_HELPER"]) if os.environ.get("FOAMY_HELPER") else [str(PLUGIN / "bin" / platform.machine() / "foamy-power-helper")]
+    prefix = (
+        json.loads(os.environ["FOAMY_HELPER"])
+        if os.environ.get("FOAMY_HELPER")
+        else [str(PLUGIN / "bin" / platform.machine() / "foamy-power-helper")]
+    )
     # Resolve the program now: the helper itself runs with a PATH of fakes only.
     program = prefix[0] if "/" in prefix[0] else shutil.which(prefix[0])
     if not program:
@@ -46,7 +60,7 @@ HELPER = helper_prefix()
 
 # One script serves every fake: it logs its argv (and LC_ALL) to calls.jsonl
 # and answers from fixture.json, which tests edit.
-FAKE = textwrap.dedent('''\
+FAKE = textwrap.dedent("""\
     #!{python}
     import json, os, sys, time
     from pathlib import Path
@@ -82,7 +96,7 @@ FAKE = textwrap.dedent('''\
     elif key == "omarchy-powerprofiles-set":
         data["applied"].append(args)
     fixture.write_text(json.dumps(data))
-''')
+""")
 
 
 class Helper(unittest.TestCase):
@@ -102,12 +116,23 @@ class Helper(unittest.TestCase):
         for name in ("busctl", "omarchy-powerprofiles-set", "powerprofilesctl", "omarchy-shell"):
             (self.bin / name).write_text(script)
             (self.bin / name).chmod(0o755)
-        self.fixture = {"sources": ["ac"], "active": "balanced", "profiles": ["power-saver", "balanced", "performance"],
-                        "fail": [], "sleep": {}, "applied": []}
+        self.fixture = {
+            "sources": ["ac"],
+            "active": "balanced",
+            "profiles": ["power-saver", "balanced", "performance"],
+            "fail": [],
+            "sleep": {},
+            "applied": [],
+        }
         self.write_fixture()
-        self.env = {"PATH": str(self.bin), "HOME": str(self.base / "home"), "XDG_RUNTIME_DIR": str(self.runtime),
-                    "XDG_STATE_HOME": str(self.base / "state"), "XDG_CACHE_HOME": str(self.base / "cache"),
-                    "OMARCHY_POWERPROFILES_STATE_DIR": str(self.state)}
+        self.env = {
+            "PATH": str(self.bin),
+            "HOME": str(self.base / "home"),
+            "XDG_RUNTIME_DIR": str(self.runtime),
+            "XDG_STATE_HOME": str(self.base / "state"),
+            "XDG_CACHE_HOME": str(self.base / "cache"),
+            "OMARCHY_POWERPROFILES_STATE_DIR": str(self.state),
+        }
         # Defence in depth: the helper must only ever find the fakes.
         self.assertEqual(shutil.which("busctl", path=self.env["PATH"]), str(self.bin / "busctl"))
 
@@ -126,8 +151,15 @@ class Helper(unittest.TestCase):
         return [call["argv"] for call in self.calls()]
 
     def helper(self, *args, code=0, env=None):
-        result = subprocess.run([*HELPER, *args], env=env or self.env, cwd=self.base, stdin=subprocess.DEVNULL,
-                                capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            [*HELPER, *args],
+            env=env or self.env,
+            cwd=self.base,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         if code == 2:
             return result
@@ -164,7 +196,9 @@ class ProfileTests(Helper):
 
     def test_active_default_applies(self):
         self.helper("default", "ac", "performance")
-        self.assertEqual(self.argvs(), [GET_PROFILES, GET_SOURCE, GET_SOURCE, ["omarchy-powerprofiles-set", "ac"], GET_SOURCE])
+        self.assertEqual(
+            self.argvs(), [GET_PROFILES, GET_SOURCE, GET_SOURCE, ["omarchy-powerprofiles-set", "ac"], GET_SOURCE]
+        )
         self.assertEqual((self.state / "ac").read_text(), "performance\n")
 
     def test_default_file_is_private_and_replaced_whole(self):
@@ -178,39 +212,61 @@ class ProfileTests(Helper):
     def test_source_transition_wins_over_manual_request(self):
         self.write_fixture(sources=["ac", "battery", "battery"])
         self.helper("set", "performance")
-        self.assertEqual(self.argvs(), [GET_PROFILES, GET_SOURCE, set_profile("performance"), GET_SOURCE,
-                                        ["omarchy-powerprofiles-set", "battery"], GET_SOURCE])
+        self.assertEqual(
+            self.argvs(),
+            [
+                GET_PROFILES,
+                GET_SOURCE,
+                set_profile("performance"),
+                GET_SOURCE,
+                ["omarchy-powerprofiles-set", "battery"],
+                GET_SOURCE,
+            ],
+        )
 
     def test_source_that_keeps_changing_gives_up(self):
         self.write_fixture(sources=["ac", "battery", "ac", "battery", "ac"])
-        self.assertEqual(self.error("set", "balanced"),
-                         {"code": "SOURCE_UNSTABLE", "message": "Power source keeps changing. Try again when it is stable."})
+        self.assertEqual(
+            self.error("set", "balanced"),
+            {"code": "SOURCE_UNSTABLE", "message": "Power source keeps changing. Try again when it is stable."},
+        )
         self.assertEqual(self.read_fixture()["applied"], [["battery"], ["ac"], ["battery"]])
 
     def test_unknown_source_does_not_write_default(self):
         self.write_fixture(upower_reply='{"type":"a{sv}","data":[{"OnBattery":{"type":"s","data":"maybe"}}]}\n')
-        self.assertEqual(self.error("default", "ac", "balanced"),
-                         {"code": "UNKNOWN_SOURCE", "message": "Cannot determine the power source."})
+        self.assertEqual(
+            self.error("default", "ac", "balanced"),
+            {"code": "UNKNOWN_SOURCE", "message": "Cannot determine the power source."},
+        )
         self.assertEqual(self.state_files(), [])
 
     def test_failed_apply_reports_saved_default(self):
         self.write_fixture(fail=["omarchy-powerprofiles-set"])
-        self.assertEqual(self.error("default", "ac", "balanced"),
-                         {"code": "DEFAULT_SAVED_APPLY_FAILED", "message": "Default saved, but the active profile could not be applied. Try again."})
+        self.assertEqual(
+            self.error("default", "ac", "balanced"),
+            {
+                "code": "DEFAULT_SAVED_APPLY_FAILED",
+                "message": "Default saved, but the active profile could not be applied. Try again.",
+            },
+        )
         self.assertEqual((self.state / "ac").read_text(), "balanced\n")
 
     def test_unavailable_profile_cannot_be_saved(self):
         self.write_fixture(profiles=["balanced"])
-        self.assertEqual(self.error("default", "ac", "performance"),
-                         {"code": "PROFILE_UNAVAILABLE", "message": "This power profile is not available on this machine."})
+        self.assertEqual(
+            self.error("default", "ac", "performance"),
+            {"code": "PROFILE_UNAVAILABLE", "message": "This power profile is not available on this machine."},
+        )
         self.assertEqual(self.state_files(), [])
         self.assertEqual(self.argvs(), [GET_PROFILES])
 
     def test_duplicate_operation_is_rejected(self):
         with open(self.runtime / "foamy-power.lock", "a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self.assertEqual(self.error("set", "balanced"),
-                             {"code": "BUSY", "message": "Another power-profile change is running. Try again."})
+            self.assertEqual(
+                self.error("set", "balanced"),
+                {"code": "BUSY", "message": "Another power-profile change is running. Try again."},
+            )
         self.assertEqual(self.argvs(), [])
 
     def test_lock_stays_out_of_omarchy_state(self):
@@ -243,8 +299,10 @@ class ProfileTests(Helper):
         blocker = self.base / "blocker"
         blocker.write_text("")
         env = {**self.env, "OMARCHY_POWERPROFILES_STATE_DIR": str(blocker / "sub")}
-        self.assertEqual(self.error("default", "ac", "balanced", env=env),
-                         {"code": "STATE_WRITE_FAILED", "message": "Cannot save power-profile state. Check directory permissions."})
+        self.assertEqual(
+            self.error("default", "ac", "balanced", env=env),
+            {"code": "STATE_WRITE_FAILED", "message": "Cannot save power-profile state. Check directory permissions."},
+        )
         self.assertEqual(self.read_fixture()["applied"], [])
 
 
@@ -255,48 +313,72 @@ class BoundaryTests(Helper):
         self.assertEqual(self.read_fixture()["applied"], [["battery"]])
 
     def test_real_profiles_format(self):
-        self.write_fixture(profiles_reply='{"type":"s","data":"performance"}\n'
-                           '{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"}},'
-                           '{"Profile":{"type":"s","data":"balanced"}},{"Profile":{"type":"s","data":"performance"}}]}\n')
+        self.write_fixture(
+            profiles_reply='{"type":"s","data":"performance"}\n'
+            '{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"}},'
+            '{"Profile":{"type":"s","data":"balanced"}},{"Profile":{"type":"s","data":"performance"}}]}\n'
+        )
         self.helper("set", "power-saver")
         self.assertEqual(self.argvs()[0], GET_PROFILES)
         self.assertNotIn("powerprofilesctl", [argv[0] for argv in self.argvs()])
         self.assertEqual(self.read_fixture()["active"], "power-saver")
 
     def test_unusable_profiles_reply(self):
-        for reply in ("", "{}", "not json\n", '{"type":"s","data":"turbo"}\n{"type":"aa{sv}","data":[]}',
-                      '{"type":"s","data":"balanced"}\n{"type":"aa{sv}","data":[{"Driver":{"type":"s","data":"x"}}]}',
-                      '{"type":"s","data":"balanced"}\n'):
+        for reply in (
+            "",
+            "{}",
+            "not json\n",
+            '{"type":"s","data":"turbo"}\n{"type":"aa{sv}","data":[]}',
+            '{"type":"s","data":"balanced"}\n{"type":"aa{sv}","data":[{"Driver":{"type":"s","data":"x"}}]}',
+            '{"type":"s","data":"balanced"}\n',
+        ):
             with self.subTest(reply=reply):
                 self.write_fixture(profiles_reply=reply)
-                self.assertEqual(self.error("set", "balanced"),
-                                 {"code": "PROFILES_UNAVAILABLE", "message": "Power profiles are unavailable. Check power-profiles-daemon."})
+                self.assertEqual(
+                    self.error("set", "balanced"),
+                    {
+                        "code": "PROFILES_UNAVAILABLE",
+                        "message": "Power profiles are unavailable. Check power-profiles-daemon.",
+                    },
+                )
         self.assertNotIn(set_profile("balanced"), self.argvs())
 
     def test_unusable_upower_reply(self):
-        for reply in ("", "nope", '{"type":"a{sv}","data":[]}', '{"type":"a{sv}","data":["x"]}',
-                      '{"type":"a{sv}","data":[{"OnBattery":true}]}'):
+        for reply in (
+            "",
+            "nope",
+            '{"type":"a{sv}","data":[]}',
+            '{"type":"a{sv}","data":["x"]}',
+            '{"type":"a{sv}","data":[{"OnBattery":true}]}',
+        ):
             with self.subTest(reply=reply):
                 self.write_fixture(upower_reply=reply)
-                self.assertEqual(self.error("set", "balanced"),
-                                 {"code": "INVALID_RESPONSE", "message": "Invalid response from UPower."})
+                self.assertEqual(
+                    self.error("set", "balanced"),
+                    {"code": "INVALID_RESPONSE", "message": "Invalid response from UPower."},
+                )
         self.assertNotIn(set_profile("balanced"), self.argvs())
 
     def test_failing_service_hides_its_diagnostics(self):
         self.write_fixture(fail=["set-property"])
-        self.assertEqual(self.error("set", "balanced"),
-                         {"code": "COMMAND_FAILED", "message": "busctl failed. Check the power service and permissions."})
+        self.assertEqual(
+            self.error("set", "balanced"),
+            {"code": "COMMAND_FAILED", "message": "busctl failed. Check the power service and permissions."},
+        )
 
     def test_missing_busctl(self):
         (self.bin / "busctl").unlink()
-        self.assertEqual(self.error("set", "balanced"),
-                         {"code": "MISSING_COMMAND", "message": "Required command is missing: busctl."})
+        self.assertEqual(
+            self.error("set", "balanced"),
+            {"code": "MISSING_COMMAND", "message": "Required command is missing: busctl."},
+        )
 
     def test_hung_service_times_out(self):
         self.write_fixture(sleep={"get-property": 20})
         started = time.monotonic()
-        self.assertEqual(self.error("set", "balanced"),
-                         {"code": "TIMEOUT", "message": "Power service timed out. Try again."})
+        self.assertEqual(
+            self.error("set", "balanced"), {"code": "TIMEOUT", "message": "Power service timed out. Try again."}
+        )
         self.assertLess(time.monotonic() - started, 10)
 
     def test_slow_service_answers_within_the_widget_deadline(self):
@@ -304,11 +386,20 @@ class BoundaryTests(Helper):
         # changing: the nine calls of `set` would take 31.5 s. The widget's
         # wrapper (as in PowerService.qml) kills only the helper at 30 s, so
         # the helper must reply before that itself.
-        self.write_fixture(sources=["ac", "battery"] * 10,
-                           sleep={"get-property": 3.5, "GetAll": 3.5, "set-property": 3.5, "omarchy-powerprofiles-set": 3.5})
+        self.write_fixture(
+            sources=["ac", "battery"] * 10,
+            sleep={"get-property": 3.5, "GetAll": 3.5, "set-property": 3.5, "omarchy-powerprofiles-set": 3.5},
+        )
         started = time.monotonic()
-        result = subprocess.run([shutil.which("timeout"), "--kill-after=1s", "30s", *HELPER, "set", "balanced"], env=self.env, cwd=self.base,
-                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=40)
+        result = subprocess.run(
+            [shutil.which("timeout"), "--kill-after=1s", "30s", *HELPER, "set", "balanced"],
+            env=self.env,
+            cwd=self.base,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=40,
+        )
         elapsed = time.monotonic() - started
         self.assertEqual(result.returncode, 1, f"{result.stdout}{result.stderr} after {elapsed:.1f} s")
         self.assertEqual(json.loads(result.stdout)["error"]["code"], "TIMEOUT")
@@ -324,8 +415,15 @@ class BoundaryTests(Helper):
         self.assertEqual({call["lc_all"] for call in self.calls()}, {"C"})
 
     def test_no_status_command(self):
-        for args in (["status"], [], ["set"], ["set", "turbo"], ["set", "balanced", "extra"],
-                     ["default", "mains", "balanced"], ["default", "ac"]):
+        for args in (
+            ["status"],
+            [],
+            ["set"],
+            ["set", "turbo"],
+            ["set", "balanced", "extra"],
+            ["default", "mains", "balanced"],
+            ["default", "ac"],
+        ):
             with self.subTest(args=args):
                 result = self.helper(*args, code=2)
                 if result.stdout.strip():

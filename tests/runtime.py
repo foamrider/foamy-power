@@ -19,6 +19,7 @@ temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
 `omarchy` CLI is a stub that only logs its arguments; a run that tried any other
 host command fails.
 """
+
 import os
 import shutil
 import sys
@@ -31,7 +32,7 @@ os.environ.setdefault("FOAMY_HOST_45", "/usr/share/omarchy/shell")
 sys.path.insert(0, str(kit / "preview"))
 import harness  # noqa: E402
 
-SHELL = r'''import QtQuick
+SHELL = r"""import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -178,11 +179,11 @@ ShellRoot {
   FileView { id: cyclesWriter; onSaved: shell.saves++; path: Quickshell.env("FOAMY_SYSFS") + "/BAT0/cycle_count"; printErrors: false }
   FileView { id: acWriter; onSaved: shell.saves++; path: Quickshell.env("HOME") + "/.local/state/omarchy/powerprofiles/ac"; printErrors: false }
 }
-'''
+"""
 
 # Neither `busctl` nor `timeout` can start: Quickshell then emits no exited(),
 # only running -> false. Both must still end, with an error.
-FAILED_START = r'''import QtQuick
+FAILED_START = r"""import QtQuick
 import Quickshell
 import qs.Ui
 import "harness"
@@ -224,7 +225,7 @@ ShellRoot {
     })
   }
 }
-'''
+"""
 
 
 def run_failed_start(host):
@@ -245,8 +246,13 @@ echo '{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"}},{"P
 
 
 def run(host):
-    r = harness.Run(host, SHELL, plugin=plugin, prefix=f"foamy-power-runtime-{host}-",
-                    fakebin={"omarchy": '#!/bin/sh\nsleep 0.2\necho "$*" >> "$FOAMY_CLI_LOG"\n', "busctl": BUSCTL})
+    r = harness.Run(
+        host,
+        SHELL,
+        plugin=plugin,
+        prefix=f"foamy-power-runtime-{host}-",
+        fakebin={"omarchy": '#!/bin/sh\nsleep 0.2\necho "$*" >> "$FOAMY_CLI_LOG"\n', "busctl": BUSCTL},
+    )
     profiles = r.base / "home/.local/state/omarchy/powerprofiles"
     profiles.mkdir(parents=True)
     (profiles / "ac").write_text("power-saver\n")

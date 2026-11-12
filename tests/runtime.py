@@ -9,11 +9,10 @@ and re-read sysfs facts are published once their reload completes. A second
 run, with nothing on PATH but `qs`, checks that a profile read or an action
 whose command can't start ends with an error instead of empty data.
 
-  python3 tests/runtime.py [4.5|4.0|both]      (default: 4.5)
+  python3 tests/runtime.py
 
 Runs on Omarchy 4.5: the installed /usr/share/omarchy/shell, or the tree in
-FOAMY_HOST_45. 4.0 runs only against an Omarchy 4.0 shell tree in
-FOAMY_HOST_40; without one, 4.0 and `both` print a SKIP line for it.
+FOAMY_HOST_45.
 
 Uses foamy-kit's preview harness (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit):
 temp HOME/XDG dirs, no Wayland/Hyprland variables, no host scripts run. The
@@ -50,7 +49,7 @@ ShellRoot {
 
   FloatingWindow {
     implicitWidth: 1920; implicitHeight: 1080
-    ScreenSim { id: sim; fullScreenBar: Quickshell.env("FOAMY_HOST") === "4.5" }
+    ScreenSim { id: sim }
     Plugin.Panel { id: one; x: 1400; y: 4; width: 30; height: 26 }
     Plugin.Panel { id: two; x: 1440; y: 4; width: 30; height: 26 }
   }
@@ -183,7 +182,7 @@ ShellRoot {
   function fail(message) { console.log("FOAMY FAIL " + message); Qt.quit() }
   FloatingWindow {
     implicitWidth: 1920; implicitHeight: 1080
-    ScreenSim { fullScreenBar: Quickshell.env("FOAMY_HOST") === "4.5" }
+    ScreenSim { }
     Plugin.Panel { id: one; x: 1400; y: 4; width: 30; height: 26 }
   }
   MockBar { id: bar; shell: QtObject { function updateEntryInline(id, settings) { return true } } }
@@ -267,17 +266,4 @@ def run(host):
     return ok
 
 
-def hosts(args):
-    """4.5 by default; 4.0 only with FOAMY_HOST_40 (no installed 4.0 shell)."""
-    chosen = []
-    for arg in args or ["4.5"]:
-        if arg not in ("4.0", "4.5", "both"):
-            sys.exit(f"unknown host {arg!r}: use 4.5, 4.0 or both")
-        chosen += ["4.5", "4.0"] if arg == "both" else [arg]
-    if "4.0" in chosen and not os.environ.get("FOAMY_HOST_40"):
-        print("SKIP foamy-power runtime 4.0: set FOAMY_HOST_40 to an Omarchy 4.0 shell tree")
-        chosen = [h for h in chosen if h != "4.0"]
-    return list(dict.fromkeys(chosen))
-
-
-sys.exit(0 if all([ok for h in hosts(sys.argv[1:]) for ok in (run(h), run_failed_start(h))]) else 1)
+sys.exit(0 if all([run("4.5"), run_failed_start("4.5")]) else 1)

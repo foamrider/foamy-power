@@ -12,9 +12,9 @@ How the lists are made:
 
 ## `foamy-power-helper`
 
-- `bin/aarch64/foamy-power-helper`: sha256 `0afcb841f3ca09baf84c8b9f8ebf48d550524bf93d796fe6269d747624872552`
-- `bin/x86_64/foamy-power-helper`: sha256 `3d6f53878a01ef50564fe660e5c0a576bc934c56e6aa75a1ed2c98a10af8ebd2`
-- `native/native.pin`: source `7f72f5ca81f7bfdfe9adb826c307e73228493f594bfcc37437a2fe6f23a8a3ff`, toolchain 1.99.1
+- `bin/aarch64/foamy-power-helper`: sha256 `679a6b82e931070529dcde4bc87a980fbf8a8e8a0f9313f4e205df9f3b793ff5`
+- `bin/x86_64/foamy-power-helper`: sha256 `1032668dd6931418ea0c28da753b5d1a6003471b5e1c6b81d5ed90b9c5b7dcc7`
+- `native/native.pin`: source `112451af8d5c32f33127b997709ebc8d4012a81cad131222a3acdc936c60965e`, toolchain 1.99.1
 
 ### Crates linked into `foamy-power-helper`
 
@@ -34,7 +34,7 @@ First-party crates (not third-party code, listed for completeness):
 
 | Crate | Version | Source | License | Arches | Notices |
 |---|---|---|---|---|---|
-| foamy-helper | 0.1.1 | `kit/rust/foamy-helper/` (foamy-kit, vendored) | MIT | both | [N4](#n4) |
+| foamy-helper | 0.1.2 | `kit/rust/foamy-helper/` (foamy-kit, vendored) | MIT | both | [N4](#n4) |
 | foamy-power-helper | 0.1.0 | `native/` (this plugin) | MIT | both | `LICENSE` |
 
 ### Toolchain code linked into `foamy-power-helper`
@@ -311,7 +311,7 @@ Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 
 ### N4
 
-Shipped by: foamy-helper 0.1.1 (foamy-kit's LICENSE).
+Shipped by: foamy-helper 0.1.2 (foamy-kit's LICENSE).
 
 ```text
 MIT License

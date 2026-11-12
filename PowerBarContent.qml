@@ -18,7 +18,7 @@ Row {
 
   BatteryIcon {
     percentage: root.fraction * 100
-    state: root.batteryState
+    batteryState: root.batteryState
     width: Style.bar.iconCanvas
     height: width
     color: root.foreground

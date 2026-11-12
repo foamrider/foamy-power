@@ -47,9 +47,9 @@ does not change them.
 
 Readings come from Quickshell's UPower and PowerProfiles services in the shell
 itself: nothing polls, and no helper runs while you only look. One `busctl`
-read of the active profile runs at startup, after a change, on a power-source
-change and on **Retry** (as Omarchy 4.5's battery service does). One service
-serves every monitor's bar.
+read of the active profile runs at startup, when the panel opens, after a
+change, on a power-source change and on **Retry** (as Omarchy 4.5's battery
+service does). One service serves every monitor's bar.
 
 ## Development
 
@@ -67,24 +67,35 @@ kit/native/build-native.sh .          # both arches, writes native/native.pin
 kit/native/build-native.sh . --verify # clean rebuild is byte-identical
 ```
 
-Tests (Python 3 and node are needed for development only):
+Tests (Python 3 and node are needed for development only). One command runs
+the linters, formatters, kit checks, native tests and the suite below (see
+foamy-kit's README, "Tooling"):
+
+```sh
+mise install              # once: the pinned tools
+tests/validate.sh         # everything, on the Omarchy host
+tests/validate.sh --ci    # what CI runs: no Quickshell or Omarchy host
+```
+
+`tests/suite.sh [--ci] [--fast]` runs the repository's own tests, which can
+also run one by one:
 
 ```sh
 node tests/model.test.js
-node tests/i18n.test.cjs
-python3 -m unittest discover -s tests -p 'test_*.py'   # helper as a process, fake busctl
-FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -m unittest discover -s tests -p 'test_*.py'  # via qemu binfmt
+node tests/i18n.test.cjs            # catalogs, including every helper reply
+python3 -I tests/test_power_action.py   # helper as a process, fake busctl
+FOAMY_HELPER='["bin/aarch64/foamy-power-helper"]' python3 -I tests/test_power_action.py  # via qemu binfmt
 python3 tests/integration.py        # helper + the installed 4.5 battery service, stubbed busctl
-python3 tests/i18n-runtime.py
-python3 tests/runtime.py            # offscreen on 4.5, needs foamy-kit (FOAMY_KIT, default ~/GitHub/Personal/foamy-kit)
-bash tests/kit-check.sh
-omarchy-plugin-validate "$PWD"
+python3 tests/runtime.py            # offscreen on 4.5
+python3 "$FOAMY_KIT/preview/i18n_runtime.py" .   # catalogs, live language switch
 ```
+
+integration.py and runtime.py need foamy-kit (`FOAMY_KIT`, default
+`~/GitHub/Personal/foamy-kit`) for its preview harness and hostenv helpers.
 
 The tests target Omarchy 4.5: the installed `/usr/share/omarchy` (set
 `OMARCHY_PATH` for another tree, or `FOAMY_HOST_45` for another shell in
-`runtime.py`). `runtime.py 4.0` and `runtime.py both` run 4.0 only against an
-Omarchy 4.0 shell tree in `FOAMY_HOST_40`, and print a SKIP line without one.
+`runtime.py`).
 
 Shared components come from [foamy-kit](https://github.com/foamrider/foamy-kit)
 as stamped copies in `kit/`; don't edit them here. `preview/Preview.qml`
@@ -164,4 +175,4 @@ Provided **as is**, without warranty or guaranteed support. Use at your own risk
 
 Language follows **Omarchy → Setup → Language**. Plugin language overrides are no longer used. Missing translations fall back to English.
 
-Translation checks: `python3 tests/i18n-runtime.py` checks live language switching on the installed shell. Set `OMARCHY_PATH` to check another Omarchy tree.
+Translation checks: foamy-kit's `preview/i18n_runtime.py .` checks live language switching on the installed shell.

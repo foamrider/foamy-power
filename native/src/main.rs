@@ -92,12 +92,14 @@
 //!
 //! Run by name from `PATH`, with the helper's environment plus `LC_ALL=C`,
 //! stdin `/dev/null`, stdout and stderr captured (at most 256 KiB each; more
-//! kills the child: `COMMAND_FAILED`), a 5 s deadline each (`TIMEOUT`; the
-//! whole process group is killed), their own process group and
-//! `PR_SET_PDEATHSIG`. Not found: `MISSING_COMMAND`; another start failure
-//! or a non-zero exit: `COMMAND_FAILED` (the Python helper reported a start
-//! failure other than "not found" as `STATE_WRITE_FAILED`). The caller wraps
-//! the helper in `timeout --kill-after=1s 30s`.
+//! kills the child: `COMMAND_FAILED`), a 5 s deadline each and every one
+//! ended within 25 s of the helper's start (`TIMEOUT`, also for a child that
+//! would start later; the whole process group is killed), their own process
+//! group and `PR_SET_PDEATHSIG`. Not found: `MISSING_COMMAND`; another start
+//! failure or a non-zero exit: `COMMAND_FAILED` (the Python helper reported
+//! a start failure other than "not found" as `STATE_WRITE_FAILED`). The
+//! caller wraps the helper in `timeout --kill-after=1s 30s`; the 25 s budget
+//! keeps every action inside it, so that wrapper never has to end the helper.
 
 use std::ffi::OsString;
 use std::fs::DirBuilder;
@@ -108,7 +110,7 @@ use std::time::Duration;
 
 use foamy_helper::child::Bounded;
 use foamy_helper::lock::FileLock;
-use foamy_helper::{Failure, fs, json};
+use foamy_helper::{Failure, fs, json, process};
 use serde_json::{Map, Value, json};
 
 const PROFILES: [&str; 3] = ["power-saver", "balanced", "performance"];
@@ -117,6 +119,14 @@ const ROOT: &str = "/org/freedesktop/UPower";
 const PPD: &str = "net.hadess.PowerProfiles";
 const PPD_PATH: &str = "/net/hadess/PowerProfiles";
 const CHILD_TIMEOUT: Duration = Duration::from_secs(5);
+/// Up to ten children at `CHILD_TIMEOUT` each would outlast the widget's
+/// `timeout 30s`, which ends only the helper: a child's own process group
+/// (`omarchy-powerprofiles-set` and its `powerprofilesctl`) would survive it
+/// and could change the profile after the widget showed the failure. Under
+/// this run budget (`process::set_run_budget`) `Bounded` ends every child
+/// group itself, a child that would start later is not started, and the
+/// reply is JSON.
+const RUN_BUDGET: Duration = Duration::from_secs(25);
 const MAX_OUTPUT: usize = 256 * 1024;
 const SOURCE_TRIES: usize = 3;
 
@@ -186,6 +196,8 @@ fn parse_args(args: &[OsString]) -> Result<Action, Failure> {
 
 /// Runs a system tool within the bounds above; its stdout on success.
 fn run(program: &str, args: &[&str]) -> Result<String, Failure> {
+    let timed_out = || failure("TIMEOUT", "Power service timed out. Try again.");
+    // Also bounded by the run budget; past it the child isn't started and reports `timed_out`.
     let output = Bounded::new(program)
         .args(args)
         .env("LC_ALL", "C")
@@ -210,7 +222,7 @@ fn run(program: &str, args: &[&str]) -> Result<String, Failure> {
         Err(_) => return Err(failed()),
     };
     if output.timed_out {
-        return Err(failure("TIMEOUT", "Power service timed out. Try again."));
+        return Err(timed_out());
     }
     if !output.success() {
         return Err(failed());
@@ -466,6 +478,7 @@ fn error_reply(failure: &Failure) -> Value {
 }
 
 fn main() -> ExitCode {
+    process::set_run_budget(RUN_BUDGET);
     json::run(
         || {
             let args: Vec<OsString> = std::env::args_os().skip(1).collect();

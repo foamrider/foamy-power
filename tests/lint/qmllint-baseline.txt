@@ -1,0 +1,76 @@
+# qmllint findings accepted when the check was adopted. tests/validate.sh fails on any
+# finding not listed here. Regenerate with `tests/validate.sh --update-baseline qmllint`
+# only to drop fixed entries or after reviewing every added one; never to pass a check.
+Panel.qml: id-shadows-member: Id for object FoamyPopup shadows property "popup". Rename one or the other. | if (popup.bodyItem)
+Panel.qml: id-shadows-member: Id for object FoamyPrefsQueue shadows property "prefs". Rename one or the other. | readonly property var preferences: prefs.effectiveSettings
+Panel.qml: id-shadows-member: Note: Id defined here | id: popup
+Panel.qml: id-shadows-member: Note: Id defined here | id: prefs
+Panel.qml: missing-property: Member "barForeground" not found on type "QObject" | readonly property color foreground: bar ? bar.barForeground : Commons.Color.foreground
+Panel.qml: missing-property: Member "iconCanvas" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "iconSlot" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "iconSlot" not found on type "QObject" | fixedWidth: root.vertical ? -1 : Math.max(Style.bar.iconSlot, barContent.implicitWidth + Style.bar.iconSlot - Style.bar.iconCanvas)
+Panel.qml: missing-property: Member "panelOpened" not found on type "QQuickItem" | popup.bodyItem.panelOpened()
+Panel.qml: missing-property: Member "position" not found on type "QObject" | readonly property bool vertical: bar && (bar.position === "left" || bar.position === "right")
+Panel.qml: missing-property: Member "position" not found on type "QObject" | readonly property bool vertical: bar && (bar.position === "left" || bar.position === "right")
+Panel.qml: missing-property: Member "settingsClosed" not found on type "QQuickItem" | popup.bodyItem.settingsClosed()
+Panel.qml: missing-property: Member "settingsOpened" not found on type "QQuickItem" | popup.bodyItem.settingsOpened()
+Panel.qml: unqualified: Unqualified access | editingSettings: root.editingSettings
+Panel.qml: unqualified: Unqualified access | error: root.errors
+Panel.qml: unqualified: Unqualified access | onCloseRequestedByView: root.close()
+Panel.qml: unqualified: Unqualified access | onRetryRequested: root.retry()
+Panel.qml: unqualified: Unqualified access | onSettingsBack: root.closeSettings()
+Panel.qml: unqualified: Unqualified access | onSettingsRequested: root.openSettings()
+Panel.qml: unqualified: Unqualified access | root.savePreference(key, value)
+Panel.qml: unqualified: Unqualified access | root.switchPanel(direction)
+Panel.qml: unqualified: Unqualified access | saving: root.saving || PowerService.busy
+Panel.qml: unqualified: Unqualified access | settings: root.preferences
+Panel.qml: unqualified: Unqualified access | settingsError: [prefs.error ? FoamyI18n.t(prefs.error) : "", root.errors].filter(function (e) {
+Panel.qml: unqualified: Unqualified access | settingsError: [prefs.error ? FoamyI18n.t(prefs.error) : "", root.errors].filter(function (e) {
+Panel.qml: unqualified: Unqualified access | settingsError: [prefs.error ? FoamyI18n.t(prefs.error) : "", root.errors].filter(function (e) {
+PowerBarContent.qml: missing-property: Member "body" not found on type "QObject" | property real fontSize: Style.font.body
+PowerBarContent.qml: missing-property: Member "family" not found on type "QObject" | property string fontFamily: Style.font.family
+PowerBarContent.qml: missing-property: Member "iconCanvas" not found on type "QObject" | width: Style.bar.iconCanvas
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | for (var i = 0; i < factReaders.count; i++) {
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | for (var i = 0; i < factReaders.count; i++) {
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | var parsed = Model.parseProfiles(text)
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | var reader = factReaders.objectAt(i)
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | var reader = factReaders.objectAt(i)
+PowerService.qml: block-scope-var-declaration: var declaration in block scope is hoisted to function scope | var response = JSON.parse(text)
+PowerService.qml: import: Type PowerService not declared as singleton in qmldir but using pragma Singleton
+PowerService.qml: missing-property: Member "cycles" not found on type "QObject" | cycles: reader.cycles
+PowerService.qml: missing-property: Member "loadedText" not found on type "FileView" | ac: Model.effectiveDefault(acFile.loadedText, "ac", profiles),
+PowerService.qml: missing-property: Member "loadedText" not found on type "FileView" | battery: Model.effectiveDefault(batteryFile.loadedText, "battery", profiles)
+PowerService.qml: missing-property: Member "reload" not found on type "QObject" | reader.reload()
+PowerService.qml: missing-property: Member "threshold" not found on type "QObject" | threshold: reader.threshold,
+PowerService.qml: unqualified: Unqualified access | onUpdated: Qt.callLater(root.collectFacts)
+PowerView.qml: missing-property: Member "body" not found on type "QObject" | font.pixelSize: FoamyStyle.font.body
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "bodySmall" not found on type "QObject" | font.pixelSize: FoamyStyle.font.bodySmall
+PowerView.qml: missing-property: Member "displayLarge" not found on type "QObject" | font.pixelSize: FoamyStyle.font.displayLarge
+PowerView.qml: missing-property: Member "heading" not found on type "QObject" | font.pixelSize: FoamyStyle.font.heading
+PowerView.qml: missing-property: Member "heading" not found on type "QObject" | font.pixelSize: FoamyStyle.font.heading
+PowerView.qml: missing-property: Member "subtitle" not found on type "QObject" | font.pixelSize: FoamyStyle.font.subtitle
+PowerView.qml: unqualified: Unqualified access | Accessible.name: root.t(Model.profileLabel(modelData))
+PowerView.qml: unqualified: Unqualified access | hasCursor: cursor.at(index)
+PowerView.qml: unqualified: Unqualified access | onClicked: if (!root.busy)
+PowerView.qml: unqualified: Unqualified access | onHovered: cursor.hover(index)
+PowerView.qml: unqualified: Unqualified access | opacity: root.busy ? FoamyStyle.disabledOpacity : 1
+PowerView.qml: unqualified: Unqualified access | readonly property bool selected: root.activeProfile === modelData
+PowerView.qml: unqualified: Unqualified access | root.profileRequested(modelData)
+PowerView.qml: unqualified: Unqualified access | text: root.t(Model.profileLabel(profileButton.modelData))
+preview/Preview.qml: missing-property: Member "background" not found on type "QObject" | color: Commons.Color.bar.background
+preview/Preview.qml: missing-property: Member "text" not found on type "QObject" | foreground: Commons.Color.bar.text
+preview/Preview.qml: unqualified: Unqualified access | activeProfile: preview.noProfiles ? "" : "balanced"
+preview/Preview.qml: unqualified: Unqualified access | battery: preview.batteries[preview.previewState] || preview.batteries.discharging
+preview/Preview.qml: unqualified: Unqualified access | battery: preview.batteries[preview.previewState] || preview.batteries.discharging
+preview/Preview.qml: unqualified: Unqualified access | battery: preview.batteries[preview.previewState] || preview.batteries.discharging
+preview/Preview.qml: unqualified: Unqualified access | editingSettings: preview.previewState === "settings"
+preview/Preview.qml: unqualified: Unqualified access | error: preview.noProfiles ? FoamyI18n.t("Power profiles are unavailable. Check power-profiles-daemon.") : ""
+preview/Preview.qml: unqualified: Unqualified access | implicitHeight: preview.previewState === "bar" ? barStrip.height : view.implicitHeight
+preview/Preview.qml: unqualified: Unqualified access | profiles: preview.noProfiles ? [] : ["power-saver", "balanced", "performance"]
+preview/Preview.qml: unqualified: Unqualified access | visible: preview.previewState !== "bar"
+preview/Preview.qml: unqualified: Unqualified access | visible: preview.previewState === "bar"

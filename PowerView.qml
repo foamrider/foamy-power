@@ -25,14 +25,14 @@ PanelKeyCatcher {
   property bool saving: false
   property string settingsError: ""
 
-  signal settingsRequested()
-  signal settingsBack()
-  signal closeRequestedByView()
+  signal settingsRequested
+  signal settingsBack
+  signal closeRequestedByView
   signal switchPanelRequested(int direction)
   signal profileRequested(string profile)
   signal defaultRequested(string source, string profile)
   signal saveRequested(string key, var value)
-  signal retryRequested()
+  signal retryRequested
 
   readonly property bool present: !!(battery && battery.present)
   readonly property string batteryState: present ? battery.state : ""
@@ -41,48 +41,78 @@ PanelKeyCatcher {
   readonly property int retryStop: error !== "" ? profiles.length : -1
   readonly property int settingsStop: profiles.length + (error !== "" ? 1 : 0)
 
-  function t(key, values) { return FoamyI18n.t(key, values) }
-  function num(value, decimals) { return FoamyI18n.number(value, decimals) }
-  function measure(value, key) { return Model.measurement(value, key, t, num) }
+  function t(key, values) {
+    return FoamyI18n.t(key, values)
+  }
+  function num(value, decimals) {
+    return FoamyI18n.number(value, decimals)
+  }
+  function measure(value, key) {
+    return Model.measurement(value, key, t, num)
+  }
   readonly property string timeText: present ? Model.duration(battery.seconds, t, num) : "—"
-  readonly property string statusText: !ready && !present ? t("Reading battery…")
-    : present ? t(Model.statusLabel(batteryState)) : t("No battery detected")
+  readonly property string statusText: !ready && !present ? t("Reading battery…") : present ? t(Model.statusLabel(batteryState)) : t("No battery detected")
   readonly property string timeSummary: {
-    if (!present) return ""
-    if (batteryState === "charging") return timeText === "—" ? "—" : t("%1 to full", [timeText])
-    if (batteryState === "discharging") return timeText === "—" ? "—" : t("%1 left", [timeText])
-    if (batteryState === "holding") return t("Holding at %1", [measure(battery.threshold, "%1%")])
+    if (!present)
+      return ""
+    if (batteryState === "charging")
+      return timeText === "—" ? "—" : t("%1 to full", [timeText])
+    if (batteryState === "discharging")
+      return timeText === "—" ? "—" : t("%1 left", [timeText])
+    if (batteryState === "holding")
+      return t("Holding at %1", [measure(battery.threshold, "%1%")])
     return t("Connected to power")
   }
 
   function panelOpened() {
     cursor.reset()
-    if (editingSettings) settingsPage.focusBack()
-    else root.forceActiveFocus()
+    if (editingSettings)
+      settingsPage.focusBack()
+    else
+      root.forceActiveFocus()
   }
-  function settingsOpened() { settingsPage.resetScroll(); settingsPage.focusBack() }
-  function settingsClosed() { root.forceActiveFocus() }
+  function settingsOpened() {
+    settingsPage.resetScroll()
+    settingsPage.focusBack()
+  }
+  function settingsClosed() {
+    root.forceActiveFocus()
+  }
   function activateCursor() {
     var i = cursor.index
-    if (i >= 0 && i < profiles.length) { if (!busy) root.profileRequested(profiles[i]) }
-    else if (i === retryStop) root.retryRequested()
-    else if (i === settingsStop) root.settingsRequested()
+    if (i >= 0 && i < profiles.length) {
+      if (!busy)
+        root.profileRequested(profiles[i])
+    } else if (i === retryStop)
+      root.retryRequested()
+    else if (i === settingsStop)
+      root.settingsRequested()
   }
 
   implicitWidth: FoamyStyle.popupWidth
   implicitHeight: editingSettings ? settingsPage.implicitHeight : content.implicitHeight
   blocked: editingSettings
 
-  FoamyCursor { id: cursor; count: root.settingsStop + 1 }
+  FoamyCursor {
+    id: cursor
+    count: root.settingsStop + 1
+  }
 
-  onMoveRequested: function(dx, dy) { cursor.move(dy !== 0 ? dy : dx) }
+  onMoveRequested: function (dx, dy) {
+    cursor.move(dy !== 0 ? dy : dx)
+  }
   onActivateRequested: root.activateCursor()
   onCloseRequested: root.closeRequestedByView()
-  onTabRequested: function(direction) { root.switchPanelRequested(direction) }
-  onTextKey: function(text, modifiers) {
-    if (!cursor.plain(modifiers)) return
-    if (text === "s" || text === "S") root.settingsRequested()
-    else if (text === "r" || text === "R") root.retryRequested()
+  onTabRequested: function (direction) {
+    root.switchPanelRequested(direction)
+  }
+  onTextKey: function (text, modifiers) {
+    if (!cursor.plain(modifiers))
+      return
+    if (text === "s" || text === "S")
+      root.settingsRequested()
+    else if (text === "r" || text === "R")
+      root.retryRequested()
   }
 
   component Label: Text {
@@ -106,8 +136,17 @@ PanelKeyCatcher {
     Layout.fillWidth: true
     Layout.preferredWidth: 1
     spacing: FoamyStyle.gapSmall
-    Label { width: parent.width; text: parent.label; color: FoamyPalette.secondaryText; font.pixelSize: FoamyStyle.font.bodySmall }
-    Label { width: parent.width; text: parent.value; font.pixelSize: FoamyStyle.font.heading }
+    Label {
+      width: parent.width
+      text: parent.label
+      color: FoamyPalette.secondaryText
+      font.pixelSize: FoamyStyle.font.bodySmall
+    }
+    Label {
+      width: parent.width
+      text: parent.value
+      font.pixelSize: FoamyStyle.font.heading
+    }
   }
 
   Flickable {
@@ -119,10 +158,14 @@ PanelKeyCatcher {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     flickableDirection: Flickable.VerticalFlick
-    Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
+    Controls.ScrollBar.vertical: Controls.ScrollBar {
+      policy: Controls.ScrollBar.AsNeeded
+    }
 
     // A wheel notch scrolls about three rows, however the mouse splits it.
-    FoamyWheelScroll { target: list }
+    FoamyWheelScroll {
+      target: list
+    }
 
     Column {
       id: content
@@ -136,53 +179,80 @@ PanelKeyCatcher {
         meta: root.present ? root.measure(root.battery.percentage, "%1%") + " · " + root.statusText : root.statusText
         settingsHasCursor: cursor.at(root.settingsStop)
         onSettingsClicked: root.settingsRequested()
-        onSettingsHovered: function(hovered) { if (hovered) cursor.hover(root.settingsStop) }
+        onSettingsHovered: function (hovered) {
+          if (hovered)
+            cursor.hover(root.settingsStop)
+        }
 
-          // Hero: charge ring and the current readings (the dev band, compact).
-          RowLayout {
-            visible: root.present
-            Layout.fillWidth: true
-            spacing: Style.space(24)
-            Item {
-              Layout.preferredWidth: Style.space(96)
-              Layout.preferredHeight: width
-              Canvas {
-                id: ring
-                anchors.fill: parent
-                property real fraction: root.present && root.battery.percentage !== null ? root.battery.percentage / 100 : 0
-                property color accent: FoamyPalette.accent
-                property color track: FoamyPalette.divider
-                onFractionChanged: requestPaint()
-                onAccentChanged: requestPaint()
-                onTrackChanged: requestPaint()
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-                onPaint: {
-                  var ctx = getContext("2d"), line = Style.space(6), radius = (Math.min(width, height) - line) / 2
-                  ctx.reset(); ctx.lineWidth = line; ctx.lineCap = "round"
-                  ctx.strokeStyle = track; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2); ctx.stroke()
-                  if (fraction > 0) { ctx.strokeStyle = accent; ctx.beginPath(); ctx.arc(width / 2, height / 2, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, fraction)); ctx.stroke() }
+        // Hero: charge ring and the current readings (the dev band, compact).
+        RowLayout {
+          visible: root.present
+          Layout.fillWidth: true
+          spacing: Style.space(24)
+          Item {
+            Layout.preferredWidth: Style.space(96)
+            Layout.preferredHeight: width
+            Canvas {
+              id: ring
+              anchors.fill: parent
+              property real fraction: root.present && root.battery.percentage !== null ? root.battery.percentage / 100 : 0
+              property color accent: FoamyPalette.accent
+              property color track: FoamyPalette.divider
+              onFractionChanged: requestPaint()
+              onAccentChanged: requestPaint()
+              onTrackChanged: requestPaint()
+              onWidthChanged: requestPaint()
+              onHeightChanged: requestPaint()
+              onPaint: {
+                var ctx = getContext("2d"), line = Style.space(6), radius = (Math.min(width, height) - line) / 2
+                ctx.reset()
+                ctx.lineWidth = line
+                ctx.lineCap = "round"
+                ctx.strokeStyle = track
+                ctx.beginPath()
+                ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2)
+                ctx.stroke()
+                if (fraction > 0) {
+                  ctx.strokeStyle = accent
+                  ctx.beginPath()
+                  ctx.arc(width / 2, height / 2, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, fraction))
+                  ctx.stroke()
                 }
-                Accessible.role: Accessible.ProgressBar
-                Accessible.name: root.t("Battery")
-                Accessible.description: root.present ? root.measure(root.battery.percentage, "%1%") : ""
               }
-              Label {
-                anchors.centerIn: parent
-                text: root.present && root.battery.percentage !== null ? root.measure(Math.round(root.battery.percentage), "%1%") : "—"
-                wrapMode: Text.NoWrap
-                font.pixelSize: FoamyStyle.font.displayLarge
-                font.weight: Font.DemiBold
-              }
+              Accessible.role: Accessible.ProgressBar
+              Accessible.name: root.t("Battery")
+              Accessible.description: root.present ? root.measure(root.battery.percentage, "%1%") : ""
             }
-            Column {
-              Layout.fillWidth: true
-              spacing: FoamyStyle.gapSmall
-              Label { width: parent.width; text: root.statusText; font.pixelSize: FoamyStyle.font.heading }
-              Label { width: parent.width; text: root.timeSummary; color: FoamyPalette.secondaryText; font.pixelSize: FoamyStyle.font.subtitle }
-              Label { visible: root.flowing; width: parent.width; text: root.measure(root.battery.rate, "%1 W"); color: FoamyPalette.secondaryText }
+            Label {
+              anchors.centerIn: parent
+              text: root.present && root.battery.percentage !== null ? root.measure(Math.round(root.battery.percentage), "%1%") : "—"
+              wrapMode: Text.NoWrap
+              font.pixelSize: FoamyStyle.font.displayLarge
+              font.weight: Font.DemiBold
             }
           }
+          Column {
+            Layout.fillWidth: true
+            spacing: FoamyStyle.gapSmall
+            Label {
+              width: parent.width
+              text: root.statusText
+              font.pixelSize: FoamyStyle.font.heading
+            }
+            Label {
+              width: parent.width
+              text: root.timeSummary
+              color: FoamyPalette.secondaryText
+              font.pixelSize: FoamyStyle.font.subtitle
+            }
+            Label {
+              visible: root.flowing
+              width: parent.width
+              text: root.measure(root.battery.rate, "%1 W")
+              color: FoamyPalette.secondaryText
+            }
+          }
+        }
       }
 
       Column {
@@ -194,7 +264,9 @@ PanelKeyCatcher {
         Column {
           width: parent.width
           spacing: FoamyStyle.gap
-          SectionTitle { text: root.t("Power profile") }
+          SectionTitle {
+            text: root.t("Power profile")
+          }
           RowLayout {
             width: parent.width
             spacing: FoamyStyle.gap
@@ -214,14 +286,21 @@ PanelKeyCatcher {
                 hasCursor: cursor.at(index)
                 opacity: root.busy ? FoamyStyle.disabledOpacity : 1
                 onHovered: cursor.hover(index)
-                onClicked: if (!root.busy) root.profileRequested(modelData)
+                onClicked: if (!root.busy)
+                  root.profileRequested(modelData)
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: root.t(Model.profileLabel(modelData))
                 Accessible.checked: selected
                 Row {
                   anchors.centerIn: parent
                   spacing: FoamyStyle.gapSmall
-                  FoamyIcon { name: Model.profileIcon(profileButton.modelData); color: FoamyPalette.text; width: FoamyStyle.iconSize; height: width; anchors.verticalCenter: parent.verticalCenter }
+                  FoamyIcon {
+                    name: Model.profileIcon(profileButton.modelData)
+                    color: FoamyPalette.text
+                    width: FoamyStyle.iconSize
+                    height: width
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
                   Label {
                     text: root.t(Model.profileLabel(profileButton.modelData))
                     wrapMode: Text.NoWrap
@@ -234,25 +313,38 @@ PanelKeyCatcher {
               }
             }
           }
-          Label { visible: root.profiles.length === 0; width: parent.width; text: root.t("Unavailable"); color: FoamyPalette.mutedText; font.pixelSize: FoamyStyle.font.bodySmall }
+          Label {
+            visible: root.profiles.length === 0
+            width: parent.width
+            text: root.t("Unavailable")
+            color: FoamyPalette.mutedText
+            font.pixelSize: FoamyStyle.font.bodySmall
+          }
         }
 
         Column {
           visible: root.present
           width: parent.width
           spacing: FoamyStyle.gapLarge
-          SectionTitle { text: root.t("Battery details") }
+          SectionTitle {
+            text: root.t("Battery details")
+          }
           GridLayout {
             width: parent.width
             columns: 2
             columnSpacing: Style.space(24)
             rowSpacing: FoamyStyle.sectionGap
-            Fact { label: root.t("Full capacity"); value: root.present ? root.measure(root.battery.capacity, "%1 Wh") : "—" }
-            Fact { label: root.t("Charge cycles"); value: root.present ? root.measure(root.battery.cycles, "%1") : "—" }
+            Fact {
+              label: root.t("Full capacity")
+              value: root.present ? root.measure(root.battery.capacity, "%1 Wh") : "—"
+            }
+            Fact {
+              label: root.t("Charge cycles")
+              value: root.present ? root.measure(root.battery.cycles, "%1") : "—"
+            }
             Fact {
               label: root.t(root.batteryState === "charging" ? "Charging at" : root.batteryState === "discharging" ? "Discharging at" : "Battery state")
-              value: !root.present ? "—" : root.flowing ? root.measure(root.battery.rate, "%1 W")
-                : root.t(root.batteryState === "holding" ? "Holding" : Model.statusLabel(root.batteryState))
+              value: !root.present ? "—" : root.flowing ? root.measure(root.battery.rate, "%1 W") : root.t(root.batteryState === "holding" ? "Holding" : Model.statusLabel(root.batteryState))
             }
             Fact {
               label: root.t(root.batteryState === "holding" ? "Charge limit" : root.batteryState === "discharging" ? "Time left" : "Time to full")
@@ -286,7 +378,8 @@ PanelKeyCatcher {
             foreground: FoamyPalette.secondaryText
             hasCursor: cursor.at(root.retryStop)
             enabled: !root.busy
-            onHoveredChanged: if (hovered) cursor.hover(root.retryStop)
+            onHoveredChanged: if (hovered)
+              cursor.hover(root.retryStop)
             onClicked: root.retryRequested()
           }
         }
@@ -307,7 +400,11 @@ PanelKeyCatcher {
     retryable: root.settingsError !== ""
     onBack: root.settingsBack()
     onRetry: root.retryRequested()
-    onSave: function(key, value) { root.saveRequested(key, value) }
-    onSaveDefault: function(source, profile) { root.defaultRequested(source, profile) }
+    onSave: function (key, value) {
+      root.saveRequested(key, value)
+    }
+    onSaveDefault: function (source, profile) {
+      root.defaultRequested(source, profile)
+    }
   }
 }

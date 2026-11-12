@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "foamy.power",
   "name": "Foamy Power",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "foamrider",
   "description": "Battery status and automatic AC/battery power profiles",
   "license": "MIT",

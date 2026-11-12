@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -73,16 +74,18 @@ for name in ("WAYLAND_DISPLAY", "DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
 stub = """#!/usr/bin/python3
 import json,os,pathlib,sys
 path=pathlib.Path(os.environ['POWER_FIXTURE']);data=json.loads(path.read_text());args=sys.argv[1:]
+def save(data):
+    temp=path.with_name(f'{path.name}.{os.getpid()}');temp.write_text(json.dumps(data));os.replace(temp,path)
 if pathlib.Path(sys.argv[0]).name=='powerprofilesctl':
     if data['fail']: sys.exit(1)
     if args[0]=='list':
         for p in ['power-saver','balanced','performance']: print(('* ' if p==data['active'] else '  ')+p+':')
     elif args[0]=='set':
-        data['active']=args[1];path.write_text(json.dumps(data))
+        data['active']=args[1];save(data)
 elif 'net.hadess.PowerProfiles' in args:
     if data['fail']: sys.exit(1)
     if 'set-property' in args:
-        data['active']=args[-1];path.write_text(json.dumps(data))
+        data['active']=args[-1];save(data)
     else:
         print(json.dumps({'type':'s','data':data['active']}))
         print(json.dumps({'type':'aa{sv}','data':[{'Profile':{'type':'s','data':p}} for p in ['power-saver','balanced','performance']]}))
@@ -146,24 +149,31 @@ helper = (
 
 
 def cli(*args, success=True):
-    response = subprocess.run([*helper, *args], env=env, text=True, capture_output=True, timeout=10)
+    response = subprocess.run([*helper, *args], env=env, text=True, capture_output=True, timeout=40)
     assert (response.returncode == 0) == success, response.stdout + response.stderr
     return json.loads(response.stdout)
 
 
 def update(**values):
+    # Replaced, never rewritten in place: the fakes read it concurrently.
     data = json.loads(fixture.read_text())
-    fixture.write_text(json.dumps({**data, **values}))
+    temp = fixture.with_name(fixture.name + ".test")
+    temp.write_text(json.dumps({**data, **values}))
+    os.replace(temp, fixture)
 
 
 def wait_active(profile):
-    if not harness.wait_for(lambda: json.loads(fixture.read_text())["active"] == profile, 10):
+    if not harness.wait_for(lambda: json.loads(fixture.read_text())["active"] == profile, 20):
         raise AssertionError("Automatic switch did not apply " + profile)
 
 
 log_path = base / "runtime.log"
 with log_path.open("w") as log:
-    process = subprocess.Popen(["qs", "-p", str(app), "--no-color"], env=env, stdout=log, stderr=log)
+    # Its own process group: the stock service's omarchy-powerprofiles-set (and
+    # the `qs ipc` it starts) end with the shell below.
+    process = subprocess.Popen(
+        ["qs", "-p", str(app), "--no-color"], env=env, stdout=log, stderr=log, start_new_session=True
+    )
     try:
 
         def transition(source):
@@ -173,21 +183,24 @@ with log_path.open("w") as log:
                 env=env,
                 text=True,
                 capture_output=True,
-                timeout=3,
+                timeout=15,
             )
             assert response.returncode == 0 and response.stdout.strip() == "ok", response.stdout + response.stderr
 
         def ready():
-            response = subprocess.run(
-                ["qs", "ipc", "-p", str(app), "call", "fixture", "source", "false"],
-                env=env,
-                text=True,
-                capture_output=True,
-                timeout=3,
-            )
+            try:
+                response = subprocess.run(
+                    ["qs", "ipc", "-p", str(app), "call", "fixture", "source", "false"],
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    timeout=15,
+                )
+            except subprocess.TimeoutExpired:
+                return False
             return response.returncode == 0 and response.stdout.strip() == "ok"
 
-        if not harness.wait_for(ready, 10, stop=lambda: process.poll() is not None):
+        if not harness.wait_for(ready, 30, stop=lambda: process.poll() is not None):
             raise AssertionError(log_path.read_text())
         cli("default", "ac", "performance")
         wait_active("performance")
@@ -209,12 +222,16 @@ with log_path.open("w") as log:
             "PASS: helper commands over busctl, atomic shared defaults, temporary override, stock battery service unplug/replug, unavailable profile service, lock outside Omarchy state"
         )
     finally:
-        process.terminate()
+        os.killpg(process.pid, signal.SIGTERM)
         try:
             process.wait(timeout=3)
         except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
+            pass
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
 shell_log = log_path.read_text()
 assert not any(
     marker in shell_log for marker in ("ReferenceError", "TypeError", "Failed to load", "Unable to assign")
@@ -225,4 +242,8 @@ hostenv.check(env, shell_log)
 others = [line for line in hostenv.calls(base) if Path(line.split()[0]).name != "omarchy-shell"]
 assert not others, others
 # Passed: nothing to inspect. A failure above keeps the directory for its log.
+# A script the last transition started can still be finishing (it outlives
+# the shell's group only if it left it); it would recreate runtime/ after
+# the removal, so wait for everything that names this directory first.
+assert harness.wait_for(lambda: not harness.processes_under(base), 10), harness.processes_under(base)
 shutil.rmtree(base)

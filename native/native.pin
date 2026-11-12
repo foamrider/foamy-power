@@ -6,6 +6,6 @@ crate native
 binary foamy-power-helper
 toolchain 1.99.1
 kit 0.9.0
-source d53ee955f3c699c411440860bcb6a0b1e83ae5d8ed5c99922d8d747c510dda2f
-13172e224070f812d63ee6a83ea6a291a5388e702d7d679a4cc81b71f71e9d56  bin/aarch64/foamy-power-helper
-4ffd7b9b9eb54a1bf169ecd5ad3241865afb610c8e68569661c6a2731afb1f42  bin/x86_64/foamy-power-helper
+source 4e8c9c9efab1941437b441c869e147aa3b9791191e41ca059cabddadd81e1bd4
+72a4a9006e79fa1aa0d2e8855e3401cb7616f4c9f57e1158c187a61588868124  bin/aarch64/foamy-power-helper
+b66b667e826fa2a9db8ca7de68a7c9062ef6abaa36defb2b8005311aad400f9d  bin/x86_64/foamy-power-helper

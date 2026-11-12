@@ -106,12 +106,11 @@ use std::fs::DirBuilder;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::sync::LazyLock;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use foamy_helper::child::Bounded;
 use foamy_helper::lock::FileLock;
-use foamy_helper::{Failure, fs, json};
+use foamy_helper::{Failure, fs, json, process};
 use serde_json::{Map, Value, json};
 
 const PROFILES: [&str; 3] = ["power-saver", "balanced", "performance"];
@@ -123,10 +122,11 @@ const CHILD_TIMEOUT: Duration = Duration::from_secs(5);
 /// Up to ten children at `CHILD_TIMEOUT` each would outlast the widget's
 /// `timeout 30s`, which ends only the helper: a child's own process group
 /// (`omarchy-powerprofiles-set` and its `powerprofilesctl`) would survive it
-/// and could change the profile after the widget showed the failure. Within
-/// this budget `Bounded` ends every child group itself and the reply is JSON.
-const ACTION_BUDGET: Duration = Duration::from_secs(25);
-static STARTED: LazyLock<Instant> = LazyLock::new(Instant::now);
+/// and could change the profile after the widget showed the failure. Under
+/// this run budget (`process::set_run_budget`) `Bounded` ends every child
+/// group itself, a child that would start later is not started, and the
+/// reply is JSON.
+const RUN_BUDGET: Duration = Duration::from_secs(25);
 const MAX_OUTPUT: usize = 256 * 1024;
 const SOURCE_TRIES: usize = 3;
 
@@ -197,14 +197,11 @@ fn parse_args(args: &[OsString]) -> Result<Action, Failure> {
 /// Runs a system tool within the bounds above; its stdout on success.
 fn run(program: &str, args: &[&str]) -> Result<String, Failure> {
     let timed_out = || failure("TIMEOUT", "Power service timed out. Try again.");
-    let left = ACTION_BUDGET.saturating_sub(STARTED.elapsed());
-    if left.is_zero() {
-        return Err(timed_out());
-    }
+    // Also bounded by the run budget; past it the child isn't started and reports `timed_out`.
     let output = Bounded::new(program)
         .args(args)
         .env("LC_ALL", "C")
-        .timeout(CHILD_TIMEOUT.min(left))
+        .timeout(CHILD_TIMEOUT)
         .max_output(MAX_OUTPUT)
         .run();
     let failed = || {
@@ -481,7 +478,7 @@ fn error_reply(failure: &Failure) -> Value {
 }
 
 fn main() -> ExitCode {
-    LazyLock::force(&STARTED);
+    process::set_run_budget(RUN_BUDGET);
     json::run(
         || {
             let args: Vec<OsString> = std::env::args_os().skip(1).collect();

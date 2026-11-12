@@ -31,7 +31,9 @@ QtObject {
   // Present power-supply batteries (the display device aggregates them).
   readonly property var packs: {
     var list = UPower.devices ? UPower.devices.values : []
-    return list.filter(function(d) { return d && d.type === UPowerDeviceType.Battery && d.powerSupply && d.isPresent })
+    return list.filter(function (d) {
+      return d && d.type === UPowerDeviceType.Battery && d.powerSupply && d.isPresent
+    })
   }
   property var packFacts: []
 
@@ -57,7 +59,8 @@ QtObject {
 
   readonly property string stateDir: {
     var override = Quickshell.env("OMARCHY_POWERPROFILES_STATE_DIR")
-    if (override) return override
+    if (override)
+      return override
     var state = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
     return state + "/omarchy/powerprofiles"
   }
@@ -72,14 +75,19 @@ QtObject {
   readonly property string pluginDir: FoamyNative.localPath(Qt.resolvedUrl("."))
 
   function profileName(profile) {
-    if (profile === PowerProfile.PowerSaver) return "power-saver"
-    if (profile === PowerProfile.Performance) return "performance"
+    if (profile === PowerProfile.PowerSaver)
+      return "power-saver"
+    if (profile === PowerProfile.Performance)
+      return "performance"
     return "balanced"
   }
 
   function refreshProfiles() {
     // A read already running may predate the change this refresh is for.
-    if (probe.running) { probePending = true; return }
+    if (probe.running) {
+      probePending = true
+      return
+    }
     probePending = false
     probeSignals = profileSignals
     probeInFlight = true
@@ -90,10 +98,12 @@ QtObject {
   // running -> false alone when busctl couldn't start (Quickshell emits no
   // exited() then), so a failed start reads as unavailable, not as no data.
   function finishProbe(text) {
-    if (!probeInFlight) return
+    if (!probeInFlight)
+      return
     probeInFlight = false
     applyProbe(text)
-    if (probePending) Qt.callLater(refreshProfiles)
+    if (probePending)
+      Qt.callLater(refreshProfiles)
   }
 
   function applyProbe(text) {
@@ -101,7 +111,8 @@ QtObject {
       var parsed = Model.parseProfiles(text)
       profiles = parsed.profiles
       // A change signal that arrived during the read is newer than its reply.
-      if (probeSignals === profileSignals || !profilesKnown) active = parsed.active
+      if (probeSignals === profileSignals || !profilesKnown)
+        active = parsed.active
       profilesKnown = true
       profilesError = ""
     } catch (error) {
@@ -119,7 +130,8 @@ QtObject {
     batteryFile.reload()
     for (var i = 0; i < factReaders.count; i++) {
       var reader = factReaders.objectAt(i)
-      if (reader) reader.reload()
+      if (reader)
+        reader.reload()
     }
   }
 
@@ -127,7 +139,11 @@ QtObject {
     var facts = []
     for (var i = 0; i < factReaders.count; i++) {
       var reader = factReaders.objectAt(i)
-      if (reader) facts.push({ threshold: reader.threshold, cycles: reader.cycles })
+      if (reader)
+        facts.push({
+          threshold: reader.threshold,
+          cycles: reader.cycles
+        })
     }
     packFacts = facts
   }
@@ -138,11 +154,16 @@ QtObject {
     refreshProfiles()
   }
 
-  function setProfile(profile) { runAction(["set", profile]) }
-  function setDefault(source, profile) { runAction(["default", source, profile]) }
+  function setProfile(profile) {
+    runAction(["set", profile])
+  }
+  function setDefault(source, profile) {
+    runAction(["default", source, profile])
+  }
 
   function runAction(args) {
-    if (actionProcess.running) return
+    if (actionProcess.running)
+      return
     actionError = ""
     actionProcess.command = ["timeout", "--kill-after=1s", "30s"].concat(FoamyNative.command(pluginDir, "foamy-power-helper", args))
     actionInFlight = true
@@ -152,7 +173,8 @@ QtObject {
   // Each action ends here once, like finishProbe: a wrapper that couldn't
   // start emits no exited(), only running -> false, and must still fail.
   function finishAction(code, text) {
-    if (!actionInFlight) return
+    if (!actionInFlight)
+      return
     actionInFlight = false
     if (FoamyNative.unavailable(code)) {
       // No helper for this CPU (or not executable): say so; actions only run on request, never retried.
@@ -171,24 +193,40 @@ QtObject {
     Qt.callLater(refreshProfiles)
   }
 
-  onDemandedChanged: if (demanded) refresh()
+  onDemandedChanged: if (demanded)
+    refresh()
   onPacksChanged: Qt.callLater(collectFacts)
-  Component.onCompleted: { reloadFacts(); refreshProfiles() }
+  Component.onCompleted: {
+    reloadFacts()
+    refreshProfiles()
+  }
 
   // busctl bounds itself: sd-bus waits at most 25 s for the daemon's reply.
   // The reply is two short lines from a system service; the collected text
   // is complete when exited() arrives.
   property Process probe: Process {
     command: ["busctl", "--json=short", "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile", "Profiles"]
-    stdout: StdioCollector { id: probeOutput; waitForEnd: true }
-    onExited: function(code) { root.finishProbe(code === 0 ? probeOutput.text : "") }
-    onRunningChanged: if (!running) root.finishProbe("")
+    stdout: StdioCollector {
+      id: probeOutput
+      waitForEnd: true
+    }
+    onExited: function (code) {
+      root.finishProbe(code === 0 ? probeOutput.text : "")
+    }
+    onRunningChanged: if (!running)
+      root.finishProbe("")
   }
 
   property Process actionProcess: Process {
-    stdout: StdioCollector { id: actionOutput; waitForEnd: true }
-    onExited: function(code) { root.finishAction(code, actionOutput.text) }
-    onRunningChanged: if (!running) root.finishAction(-1, "")
+    stdout: StdioCollector {
+      id: actionOutput
+      waitForEnd: true
+    }
+    onExited: function (code) {
+      root.finishAction(code, actionOutput.text)
+    }
+    onRunningChanged: if (!running)
+      root.finishAction(-1, "")
   }
 
   property Connections profileWatcher: Connections {
@@ -196,21 +234,28 @@ QtObject {
     function onProfileChanged() {
       root.profileSignals++
       root.active = root.profileName(PowerProfiles.profile)
-      if (!root.profilesKnown) root.refreshProfiles()
+      if (!root.profilesKnown)
+        root.refreshProfiles()
     }
     function onHasPerformanceProfileChanged() {
-      if (root.profilesKnown) root.profiles = Model.availableProfiles(PowerProfiles.hasPerformanceProfile)
+      if (root.profilesKnown)
+        root.profiles = Model.availableProfiles(PowerProfiles.hasPerformanceProfile)
     }
   }
 
   // Let Omarchy's battery service finish restoring the source default first.
   property Timer transition: Timer {
     interval: 650
-    onTriggered: { root.refreshProfiles(); root.reloadFacts() }
+    onTriggered: {
+      root.refreshProfiles()
+      root.reloadFacts()
+    }
   }
   property Connections sourceWatcher: Connections {
     target: UPower
-    function onOnBatteryChanged() { root.transition.restart() }
+    function onOnBatteryChanged() {
+      root.transition.restart()
+    }
   }
 
   property FileView acFile: FileView {
